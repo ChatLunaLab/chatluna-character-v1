@@ -257,10 +257,13 @@ onMounted(() => {
 .preset-editor-layout {
     height: 100%;
     background-color: var(--k-color-base);
+    padding-right: 80px;
+    box-sizing: border-box;
 }
 
 .editor-sidebar {
     background-color: var(--k-color-surface-1);
+    border-right: 1px solid var(--k-color-divider);
     height: 100%;
     min-height: 0;
 }

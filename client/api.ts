@@ -69,6 +69,10 @@ export async function getAvailableModels(): Promise<unknown[]> {
     return await send('character/getAvailableModels')
 }
 
+export async function getAvailableModelInfos(): Promise<unknown[]> {
+    return await send('character/getAvailableModelInfos')
+}
+
 export async function getMemories(
     guildId: string,
     options?: Record<string, unknown>

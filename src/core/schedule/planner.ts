@@ -99,7 +99,7 @@ Return a JSON schedule.`
         })
         const response = await model.invoke(
             [new HumanMessage(prompt)],
-            callbacks ? ({ callbacks } as any) : undefined
+            callbacks ? { callbacks } : undefined
         )
         const raw = String(response.content ?? '')
         return parsePlan(raw, context.currentDate)

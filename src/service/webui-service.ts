@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 import type { Context } from 'koishi'
-import type {} from '@koishijs/plugin-console'
+import type { } from '@koishijs/plugin-console'
 import type { Config } from '../config'
 import type { PresetTemplate, PromptTemplate } from '../types'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -149,6 +149,17 @@ export function applyWebUI(ctx: Context, config: Config) {
                     ).value
 
                     return (value ?? []).map((model) => model.name)
+                }
+            )
+
+            ctx.console.addListener(
+                'character/getAvailableModelInfos',
+                async () => {
+                    const value = ctx.chatluna.platform.listAllModels(
+                        ModelType.llm
+                    ).value
+
+                    return value ?? []
                 }
             )
 

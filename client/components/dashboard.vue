@@ -1,20 +1,17 @@
 <template>
     <k-layout class="character-layout">
         <div class="dashboard-container">
-            <div class="main-content">
+            <!-- Panel editors: rendered directly at full height, no scroll wrapper -->
+            <ConfigEditor v-if="activeTab === 'config'" />
+            <PresetEditor v-else-if="activeTab === 'presets'" />
+
+            <!-- Scrollable content views -->
+            <div v-else class="main-content">
                 <el-scrollbar>
                     <div class="content-wrapper">
                         <Transition name="fade-slide" mode="out-in">
-                            <ConfigEditor
-                                v-if="activeTab === 'config'"
-                                key="config"
-                            />
-                            <PresetEditor
-                                v-else-if="activeTab === 'presets'"
-                                key="presets"
-                            />
                             <TriggerConfig
-                                v-else-if="activeTab === 'triggers'"
+                                v-if="activeTab === 'triggers'"
                                 key="triggers"
                             />
                             <MemoryViewer

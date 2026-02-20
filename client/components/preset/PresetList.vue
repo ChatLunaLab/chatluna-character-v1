@@ -66,7 +66,6 @@ const filteredPresets = computed(() => {
     display: flex;
     flex-direction: column;
     background-color: var(--k-color-surface-1);
-    border-right: 1px solid var(--k-color-divider);
 }
 
 .list-header {

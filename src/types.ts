@@ -5,6 +5,7 @@ import type { ChatLunaService } from 'koishi-plugin-chatluna/services/chat'
 import type { ResponseQueueTicket } from './core/base/response_queue'
 import { DecisionResult, TriggerResult } from './core/triggers'
 import type { BaseTrigger } from './core/triggers/base'
+import type { PlatformModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export interface GlobalConfig {
     maxMessages: number
@@ -389,6 +390,7 @@ export interface MuteConfig {
 
 export interface CharacterConfig {
     applyGroup: string[]
+    reverseApplyGroup?: boolean
     global: GlobalConfig
     models: ModelConfig
     triggers: TriggerConfig
@@ -759,6 +761,7 @@ declare module '@koishijs/console' {
             name: string
         ) => Promise<{ success: boolean }>
         'character/getAvailableModels': () => Promise<string[]>
+        'character/getAvailableModelInfos': () => Promise<PlatformModelInfo[]>
         'character/getMemories': (
             guildId?: string,
             options?: Omit<MemoryQuery, 'query' | 'guildId'>
@@ -800,5 +803,5 @@ declare module '@koishijs/console' {
 export type DeepNonNullable<T> = T extends (infer U)[]
     ? DeepNonNullable<NonNullable<U>>[]
     : T extends object
-      ? { [K in keyof T]-?: DeepNonNullable<NonNullable<T[K]>> }
-      : NonNullable<T>
+    ? { [K in keyof T]-?: DeepNonNullable<NonNullable<T[K]>> }
+    : NonNullable<T>

@@ -24,6 +24,12 @@ const messages = {
                 applyGroup: 'Enabled groups',
                 applyGroupDescription:
                     'Only these groups will enable ChatLuna Character.',
+                applyGroupBlacklist: 'Disabled groups',
+                applyGroupBlacklistDescription:
+                    'ChatLuna Character is enabled for all groups except those listed here.',
+                reverseApplyGroup: 'Reverse Mode',
+                reverseApplyGroupDescription:
+                    'When enabled, the group list acts as a blacklist — all groups are enabled except those listed.',
                 addGroup: 'Add',
                 emptyGroupList: 'No groups selected',
                 groupName: 'Group',
@@ -36,41 +42,94 @@ const messages = {
                     memory: 'Memory',
                     image: 'Image',
                     mute: 'Mute',
-                    thinking: 'Thinking',
+                    thinking: 'Deep Thinking',
                     triggers: 'Triggers',
                     schedule: 'Schedule'
                 },
                 preset: 'Preset',
+                presetDescription:
+                    'Preset ID for this guild; leave blank to inherit global preset.',
                 presetPlaceholder: 'Preset ID',
-                maxMessages: 'Max messages',
-                messageExpireTime: 'Message expire time',
+                maxMessages: 'Max Messages',
+                maxMessagesDescription:
+                    'Maximum messages retained in conversation history for context.',
+                messageExpireTime: 'Message Expire Time',
+                messageExpireTimeDescription:
+                    'Messages older than this duration are removed from context (ms).',
                 disableChatLuna: 'Disable ChatLuna',
-                mainModel: 'Main model',
-                analysisModel: 'Analysis model',
-                replySettings: 'Reply settings',
-                typingTime: 'Typing time',
-                largeTextSize: 'Large text size',
-                largeTextTypingTime: 'Large text typing time',
-                behaviorSettings: 'Behavior settings',
-                splitSentence: 'Split sentence',
-                splitVoice: 'Split voice',
+                disableChatLunaDescription:
+                    'Completely disable all ChatLuna Character features when on.',
+                mainModel: 'Main Model',
+                mainModelDescription:
+                    'Primary language model used to generate character replies.',
+                analysisModel: 'Analysis Model',
+                analysisModelDescription:
+                    'Auxiliary model for analyzing message intent and context.',
+                replySettings: 'Reply Settings',
+                typingTime: 'Typing Delay',
+                typingTimeDescription:
+                    'Simulated typing delay per character before sending (ms).',
+                largeTextSize: 'Large Text Threshold',
+                largeTextSizeDescription:
+                    'Replies exceeding this character count are treated as large text.',
+                largeTextTypingTime: 'Large Text Typing Delay',
+                largeTextTypingTimeDescription:
+                    'Typing delay per character for long text messages (ms).',
+                behaviorSettings: 'Behavior Settings',
+                splitSentence: 'Split Replies by Sentence',
+                splitSentenceDescription:
+                    'Break long replies into sentences and send them one by one.',
+                splitVoice: 'Split Voice by Sentence',
+                splitVoiceDescription:
+                    'Synthesize and send voice messages sentence by sentence.',
                 markdownRender: 'Render Markdown',
-                isAt: 'Mention user',
-                limitSettings: 'Limit settings',
-                modelCompletionCount: 'Model completion count',
-                maxTokens: 'Max tokens',
-                memoryEnabled: 'Memory enabled',
-                maxShortTermMemories: 'Max short-term memories',
-                maxLongTermMemories: 'Max long-term memories',
-                autoCleanup: 'Auto cleanup',
-                imageEnabled: 'Image enabled',
-                maxImageCount: 'Max image count',
-                maxImageSize: 'Max image size',
-                muteTime: 'Mute time',
-                forceMuteEnabled: 'Force mute enabled',
-                thinkingEnabled: 'Thinking enabled',
-                warmGroupEnabled: 'Warm group enabled',
-                warmGroupThreshold: 'Warm group threshold',
+                markdownRenderDescription:
+                    'Render Markdown syntax in replies as formatted rich text.',
+                isAt: '@ User in Reply',
+                isAtDescription: 'Mention the target user when sending a reply.',
+                limitSettings: 'Limit Settings',
+                modelCompletionCount: 'Max Model Calls',
+                modelCompletionCountDescription:
+                    'Maximum number of AI model calls allowed per conversation turn.',
+                maxTokens: 'Max Tokens',
+                maxTokensDescription:
+                    'Maximum tokens the model can output in a single call.',
+                memoryEnabled: 'Enable Memory',
+                memoryEnabledDescription:
+                    'Enable memory so the character remembers past conversation details.',
+                maxShortTermMemories: 'Max Short-Term Memories',
+                maxShortTermMemoriesDescription:
+                    'Maximum number of entries kept in short-term memory.',
+                maxLongTermMemories: 'Max Long-Term Memories',
+                maxLongTermMemoriesDescription:
+                    'Maximum number of entries stored in long-term memory.',
+                autoCleanup: 'Auto Cleanup',
+                autoCleanupDescription:
+                    'Automatically remove expired or low-importance memory entries.',
+                imageEnabled: 'Enable Image',
+                imageEnabledDescription:
+                    'Allow the character to recognize and analyze images.',
+                maxImageCount: 'Max Image Count',
+                maxImageCountDescription:
+                    'Maximum number of images to process per conversation.',
+                maxImageSize: 'Max Image Size',
+                maxImageSizeDescription:
+                    'Maximum image file size allowed for processing (bytes).',
+                muteTime: 'Mute Duration',
+                muteTimeDescription:
+                    'Duration of mute after it is triggered (ms).',
+                forceMuteEnabled: 'Force Mute',
+                forceMuteEnabledDescription:
+                    'Force mute when triggered, ignoring other conditions.',
+                thinkingEnabled: 'Enable Deep Thinking',
+                thinkingEnabledDescription:
+                    'Enable deep reasoning mode for the character to think before replying.',
+                warmGroupEnabled: 'Enable Group Warmup',
+                warmGroupEnabledDescription:
+                    'Proactively warm up context when group activity is low.',
+                warmGroupThreshold: 'Warmup Activity Threshold',
+                warmGroupThresholdDescription:
+                    'Activity level threshold that triggers group warmup (0-1).',
                 triggers: {
                     activity: 'Activity',
                     private: 'Private',
@@ -80,15 +139,32 @@ const messages = {
                     schedule: 'Schedule'
                 },
                 enabled: 'Enabled',
-                lowerLimit: 'Lower limit',
-                upperLimit: 'Upper limit',
-                cooldownTime: 'Cooldown time',
+                enabledDescription: 'Enable this trigger.',
+                lowerLimit: 'Lower Limit',
+                lowerLimitDescription:
+                    'Minimum activity level to trigger a reply (0-1).',
+                upperLimit: 'Upper Limit',
+                upperLimitDescription:
+                    'Maximum activity level to trigger a reply (0-1).',
+                cooldownTime: 'Cooldown Time',
+                cooldownTimeDescription:
+                    'Minimum wait time between two triggers (ms).',
                 keywords: 'Keywords',
+                keywordsDescription:
+                    'Trigger a reply when messages contain these keywords.',
                 keywordsPlaceholder: 'Add keywords',
-                bufferSize: 'Buffer size',
-                scheduleEnabled: 'Schedule enabled',
+                bufferSize: 'Topic Context Buffer',
+                bufferSizeDescription:
+                    'Number of recent messages buffered for topic change detection.',
+                scheduleEnabled: 'Enable Schedule',
+                scheduleEnabledDescription:
+                    'Enable the scheduled messaging feature.',
                 location: 'Location',
-                timezone: 'Timezone'
+                locationDescription:
+                    'Location used to fetch weather and local time info.',
+                timezone: 'Timezone',
+                timezoneDescription:
+                    'Timezone for scheduled tasks, e.g. Asia/Shanghai.'
             },
             presets: {
                 title: 'Preset Editor',
@@ -159,7 +235,16 @@ const messages = {
                 empty: 'No models available',
                 name: 'Name',
                 detail: 'Detail',
-                unnamed: 'Model {index}'
+                unnamed: 'Model {index}',
+                select: 'Select Model',
+                searchPlaceholder: 'Search model...',
+                allPlatforms: 'All Platforms',
+                capabilities: {
+                    tool_call: 'Tool Call',
+                    image_input: 'Vision',
+                    thinking: 'Thinking',
+                    image_generation: 'Image Gen'
+                }
             },
             stats: {
                 totalTokens: 'Total Tokens',
@@ -217,7 +302,8 @@ const messages = {
                 loadModelsFailed: 'Failed to load models.',
                 loadTriggersFailed: 'Failed to load trigger states.',
                 updateTriggerSuccess: 'Trigger updated.',
-                updateTriggerFailed: 'Failed to update trigger.'
+                updateTriggerFailed: 'Failed to update trigger.',
+                selectGuildToEdit: 'Select a guild to edit its config.'
             }
         },
         common: {
@@ -265,6 +351,12 @@ const messages = {
                 searchGroupPlaceholder: '搜索群组名称或 ID',
                 applyGroup: '启用群组',
                 applyGroupDescription: '仅这些群组会启用 ChatLuna Character。',
+                applyGroupBlacklist: '禁用群组',
+                applyGroupBlacklistDescription:
+                    '除列表内群组外，其余所有群组均会启用 ChatLuna Character。',
+                reverseApplyGroup: '反转模式',
+                reverseApplyGroupDescription:
+                    '启用后群组列表变为黑名单，列表内的群组不启用，其余全部启用。',
                 addGroup: '添加',
                 emptyGroupList: '未选择群组',
                 groupName: '群组名称',
@@ -277,41 +369,89 @@ const messages = {
                     memory: '记忆',
                     image: '图片',
                     mute: '禁言',
-                    thinking: '思维',
+                    thinking: '深度思考',
                     triggers: '触发器',
                     schedule: '定时'
                 },
                 preset: '预设',
+                presetDescription:
+                    '此群组使用的角色预设 ID，留空则继承全局预设。',
                 presetPlaceholder: '预设 ID',
                 maxMessages: '最大消息数',
+                maxMessagesDescription:
+                    '对话历史中保留的最大消息条数，影响上下文长度。',
                 messageExpireTime: '消息过期时间',
+                messageExpireTimeDescription:
+                    '超过此时长的消息将从上下文中移除，单位毫秒。',
                 disableChatLuna: '禁用 ChatLuna',
+                disableChatLunaDescription:
+                    '启用后在响应伪装的群聊中将完全关闭 ChatLuna 的所有功能。',
                 mainModel: '主模型',
+                mainModelDescription: '用于生成角色回复的主要语言模型。',
                 analysisModel: '分析模型',
+                analysisModelDescription:
+                    '用于分析消息内容和意图的辅助语言模型。',
                 replySettings: '回复设置',
-                typingTime: '输入耗时',
+                typingTime: '单字打字延迟',
+                typingTimeDescription:
+                    '每个字符发送前的模拟打字延迟（毫秒）。',
                 largeTextSize: '长文本阈值',
-                largeTextTypingTime: '长文本输入耗时',
+                largeTextSizeDescription:
+                    '超过此字符数的回复将按长文本规则处理。',
+                largeTextTypingTime: '长文本打字延迟',
+                largeTextTypingTimeDescription:
+                    '长文本每个字符的模拟打字延迟（毫秒）。',
                 behaviorSettings: '行为设置',
-                splitSentence: '分句',
-                splitVoice: '分语音',
+                splitSentence: '按句分割回复',
+                splitSentenceDescription:
+                    '将长回复按句子拆分后逐条发送，回复更自然。',
+                splitVoice: '按句分割语音',
+                splitVoiceDescription: '语音合成时按句子分段，逐段发送。',
                 markdownRender: '渲染 Markdown',
-                isAt: '消息 @',
+                markdownRenderDescription:
+                    '将回复中的 Markdown 语法渲染为富文本格式。',
+                isAt: '回复时 @ 用户',
+                isAtDescription: '发送回复时 @ 被回复的用户。',
                 limitSettings: '限制设置',
-                modelCompletionCount: '模型补全次数',
-                maxTokens: '最大 Token',
+                modelCompletionCount: '模型调用次数',
+                modelCompletionCountDescription:
+                    '模型单次完成允许调用的上下文轮次数。',
+                maxTokens: '最大 Token 数',
+                maxTokensDescription:
+                    '单次模型调用中允许最大上下文 Token 数。',
                 memoryEnabled: '启用记忆',
+                memoryEnabledDescription:
+                    '启用后角色将记住历史对话中的重要信息。',
                 maxShortTermMemories: '短期记忆上限',
+                maxShortTermMemoriesDescription:
+                    '短期记忆中最多保留的条目数。',
                 maxLongTermMemories: '长期记忆上限',
+                maxLongTermMemoriesDescription:
+                    '长期记忆中最多保留的条目数。',
                 autoCleanup: '自动清理',
+                autoCleanupDescription:
+                    '自动清理过期或重要性低的记忆条目。',
                 imageEnabled: '启用图片',
+                imageEnabledDescription: '允许角色识别和分析用户发送的图片。',
                 maxImageCount: '最大图片数量',
+                maxImageCountDescription: '每次对话中最多处理的图片数量。',
                 maxImageSize: '最大图片大小',
+                maxImageSizeDescription:
+                    '允许处理的图片最大文件大小（字节）。',
                 muteTime: '禁言时长',
+                muteTimeDescription: '禁言触发后持续的时长，单位毫秒。',
                 forceMuteEnabled: '强制禁言',
-                thinkingEnabled: '启用思维',
-                warmGroupEnabled: '群组升温',
-                warmGroupThreshold: '升温阈值',
+                forceMuteEnabledDescription:
+                    '无论其他条件，满足触发条件时强制执行禁言。',
+                thinkingEnabled: '启用深度思考',
+                thinkingEnabledDescription:
+                    '开启深度思考模式，回复前进行推理分析。',
+                warmGroupEnabled: '启用群组预热',
+                warmGroupEnabledDescription:
+                    '在群组活跃度低时主动预热对话上下文。',
+                warmGroupThreshold: '预热触发阈值',
+                warmGroupThresholdDescription:
+                    '触发群组预热的活跃度阈值（0~1）。',
                 triggers: {
                     activity: '活跃度',
                     private: '私聊',
@@ -321,15 +461,29 @@ const messages = {
                     schedule: '定时'
                 },
                 enabled: '启用',
+                enabledDescription: '启用此触发器。',
                 lowerLimit: '下限',
+                lowerLimitDescription:
+                    '触发回复的活跃度下限（0~1），低于此值不触发。',
                 upperLimit: '上限',
+                upperLimitDescription:
+                    '触发回复的活跃度上限（0~1），高于此值不触发。',
                 cooldownTime: '冷却时间',
+                cooldownTimeDescription:
+                    '两次触发之间的最短等待时间（毫秒）。',
                 keywords: '关键词',
+                keywordsDescription: '消息中包含这些关键词时触发回复。',
                 keywordsPlaceholder: '添加关键词',
-                bufferSize: '缓冲大小',
+                bufferSize: '话题上下文缓冲',
+                bufferSizeDescription:
+                    '用于检测话题变化的历史消息缓冲条数。',
                 scheduleEnabled: '启用定时',
+                scheduleEnabledDescription: '启用定时发送功能。',
                 location: '地点',
-                timezone: '时区'
+                locationDescription: '用于获取天气、时间等信息的地点。',
+                timezone: '时区',
+                timezoneDescription:
+                    '定时任务使用的时区，例如 Asia/Shanghai。'
             },
             presets: {
                 title: '预设编辑器',
@@ -400,7 +554,16 @@ const messages = {
                 empty: '暂无可用模型',
                 name: '名称',
                 detail: '详情',
-                unnamed: '模型 {index}'
+                unnamed: '模型 {index}',
+                select: '选择模型',
+                searchPlaceholder: '搜索模型...',
+                allPlatforms: '全部平台',
+                capabilities: {
+                    tool_call: '工具调用',
+                    image_input: '视觉识别',
+                    thinking: '深度思考',
+                    image_generation: '图像生成'
+                }
             },
             stats: {
                 totalTokens: '总 Token',
@@ -448,7 +611,7 @@ const messages = {
                 savePresetFailed: '保存预设失败。',
                 deletePresetSuccess: '预设已删除。',
                 deletePresetFailed: '删除预设失败。',
-                deletePresetConfirm: '确定要删除预设“{name}”吗？',
+                deletePresetConfirm: '确定要删除预设"{name}"吗？',
                 deletePresetTitle: '确认',
                 unsavedChangesConfirm: '你有未保存的修改，是否先保存？',
                 loadMemoriesFailed: '加载记忆失败。',
@@ -458,7 +621,8 @@ const messages = {
                 loadModelsFailed: '加载模型失败。',
                 loadTriggersFailed: '加载触发器状态失败。',
                 updateTriggerSuccess: '触发器已更新。',
-                updateTriggerFailed: '更新触发器失败。'
+                updateTriggerFailed: '更新触发器失败。',
+                selectGuildToEdit: '请先选择一个群组以编辑其配置。'
             }
         },
         common: {

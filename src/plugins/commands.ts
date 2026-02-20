@@ -2,8 +2,6 @@ import { Context, Session } from 'koishi'
 import { Config } from '..'
 
 export function apply(ctx: Context, config: Config) {
-    void config
-
     ctx.command('chatluna.character', '角色扮演相关命令')
 
     ctx.command('chatluna.character.clear [target]', '清除聊天记录', {

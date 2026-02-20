@@ -94,7 +94,7 @@
                         v-if="globalConfig"
                         v-model="globalConfig"
                         :active-section="activeSection"
-                        :available-models="availableModels"
+                        :available-presets="availablePresets"
                     />
                 </template>
                 <template v-else>
@@ -102,7 +102,7 @@
                         v-if="guildConfig && currentGuildId"
                         v-model="guildConfig"
                         :active-section="activeSection"
-                        :available-models="availableModels"
+                        :available-presets="availablePresets"
                         is-guild-config
                     />
                     <el-empty
@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import {
@@ -138,9 +138,10 @@ import {
     saveConfig,
     getGuildConfig,
     saveGuildConfig,
-    getAvailableModels
+    getPresets
 } from '../api'
 import type { CharacterConfig } from '@/types'
+import type { WebPreset } from '../api'
 
 const { t } = useI18n()
 
@@ -155,7 +156,7 @@ const savingGuild = ref(false)
 const globalConfig = ref<CharacterConfig | null>(null)
 const guildConfig = ref<(CharacterConfig & { preset?: string }) | null>(null)
 const currentGuildId = ref('')
-const availableModels = ref<string[]>([])
+const availablePresets = ref<WebPreset[]>([])
 
 // Computed
 const sectionTitle = computed(() => {
@@ -178,12 +179,11 @@ const handleMenuSelect = (index: string) => {
     activeSection.value = index
 }
 
-const loadModels = async () => {
+const loadPresets = async () => {
     try {
-        const models = await getAvailableModels()
-        availableModels.value = models as string[]
+        availablePresets.value = await getPresets()
     } catch (e) {
-        console.error('Failed to load models', e)
+        console.error('Failed to load presets', e)
     }
 }
 
@@ -251,9 +251,20 @@ const handleGuildChange = () => {
     }
 }
 
+const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+        loadPresets()
+    }
+}
+
 onMounted(() => {
     loadGlobalConfig()
-    loadModels()
+    loadPresets()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onUnmounted(() => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
@@ -261,6 +272,8 @@ onMounted(() => {
 .config-editor {
     height: 100%;
     background-color: var(--k-color-base);
+    padding-right: 80px;
+    box-sizing: border-box;
 }
 
 .editor-sidebar {
@@ -274,11 +287,11 @@ onMounted(() => {
 }
 
 .sidebar-header {
-    padding: 20px;
+    padding: 12px 20px;
     border-bottom: 1px solid var(--k-color-divider);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     background-color: var(--k-color-surface-1);
     box-sizing: border-box;
 }
@@ -299,7 +312,9 @@ onMounted(() => {
 
 .scope-switcher :deep(.el-radio-button__inner) {
     width: 100%;
-    padding: 10px 0;
+    height: 40px;
+    line-height: 40px;
+    padding: 0;
     border-radius: 0;
 }
 

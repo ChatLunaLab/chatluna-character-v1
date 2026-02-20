@@ -12,7 +12,7 @@ export class ContextAnalyzer {
         const prompt = buildContextPrompt(context)
         const response = await model.invoke(
             [new HumanMessage(prompt)],
-            callbacks ? ({ callbacks } as any) : undefined
+            callbacks ? { callbacks } : undefined
         )
         return parseContextAnalysis(String(response.content ?? ''))
     }

@@ -17,7 +17,7 @@ export class DecisionMaker {
         const prompt = buildDecisionPrompt(context, analysis)
         const response = await model.invoke(
             [new HumanMessage(prompt)],
-            callbacks ? ({ callbacks } as any) : undefined
+            callbacks ? { callbacks } : undefined
         )
         return parseBehaviorDecision(String(response.content ?? ''))
     }

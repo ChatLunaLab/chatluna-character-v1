@@ -33,7 +33,7 @@ withDefaults(
 <style scoped>
 .config-list-item {
     display: grid;
-    grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+    grid-template-columns: minmax(200px, 1fr) minmax(100px, 200px);
     gap: 16px;
     padding: 16px 20px;
     border-bottom: 1px solid var(--k-color-divider);
@@ -70,13 +70,13 @@ withDefaults(
 }
 
 .item-label {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     color: var(--k-color-text);
 }
 
 .item-description {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--k-text-light);
     line-height: 1.5;
 }

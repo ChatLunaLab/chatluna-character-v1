@@ -14,13 +14,24 @@ function shouldCollect(ctx: Context, session: Session) {
         return true
     }
     const guildId = session.guildId ?? ''
-    const applyGroup =
-        ctx.chatluna_character_config?.globalConfig?.applyGroup ?? []
-    if (!applyGroup.includes(guildId)) {
-        return false
+    const globalConfig = ctx.chatluna_character_config?.globalConfig
+    const applyGroup = globalConfig?.applyGroup ?? []
+    const reverseApplyGroup = globalConfig?.reverseApplyGroup ?? false
+
+    if (reverseApplyGroup) {
+        // Blacklist mode: collect from all groups except those in applyGroup
+        if (applyGroup.includes(guildId)) {
+            return false
+        }
+    } else {
+        // Whitelist mode: only collect from groups in applyGroup
+        if (!applyGroup.includes(guildId)) {
+            return false
+        }
     }
+
     if (session.userId && session.bot.selfId === session.userId) {
         return false
     }
-    return Boolean(ctx.chatluna_character_config?.globalConfig)
+    return Boolean(globalConfig)
 }
