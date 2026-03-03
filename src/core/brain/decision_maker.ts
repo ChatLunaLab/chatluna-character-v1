@@ -6,6 +6,9 @@ import type {
     ContextAnalysis,
     ThinkingContext
 } from '../../types'
+import { Logger } from 'koishi'
+
+const logger = new Logger('chatluna-character-v1')
 
 export class DecisionMaker {
     async decide(
@@ -15,11 +18,22 @@ export class DecisionMaker {
         callbacks?: Callbacks
     ): Promise<BehaviorDecision> {
         const prompt = buildDecisionPrompt(context, analysis)
+        logger.info(
+            `[DecisionMaker.decide] prompt length=${prompt.length} interestLevel=${analysis.interestLevel} groupActivity=${analysis.groupActivity}`
+        )
         const response = await model.invoke(
             [new HumanMessage(prompt)],
             callbacks ? { callbacks } : undefined
         )
-        return parseBehaviorDecision(String(response.content ?? ''))
+        const raw = String(response.content ?? '')
+        logger.info(
+            `[DecisionMaker.decide] raw response length=${raw.length}: ${raw.slice(0, 200)}`
+        )
+        const result = parseBehaviorDecision(raw)
+        logger.info(
+            `[DecisionMaker.decide] parsed: shouldRespond=${result.shouldRespond} responseTone=${result.responseTone} warmGroup=${result.warmGroup} observations=${result.observations?.length ?? 0}`
+        )
+        return result
     }
 }
 

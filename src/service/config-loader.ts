@@ -17,6 +17,7 @@ global:
 models:
   main: ""
   analysis: ""
+  thinking: ""
 
 triggers:
   private:
@@ -29,6 +30,10 @@ triggers:
   keyword:
     enabled: false
     keywords: []
+  mention:
+    enabled: true
+    respondToAt: true
+    respondToQuote: true
   topic:
     enabled: false
     bufferSize: 5
@@ -148,16 +153,54 @@ export class ConfigLoader extends Service {
         }
     }
 
+    private _getDefaultConfig(): CharacterConfig {
+        return load(DEFAULT_CONFIG) as CharacterConfig
+    }
+
     private async _loadConfig(): Promise<void> {
         const configFile = path.join(this._configPath, 'config.yml')
         const rawConfig = await fs.readFile(configFile, 'utf-8')
         const parsed = (load(rawConfig) ?? {}) as Partial<CharacterConfig>
+        const defaults = this._getDefaultConfig()
         const applyGroup = Array.isArray(parsed.applyGroup)
             ? parsed.applyGroup
             : []
         this._config = {
+            ...defaults,
             ...parsed,
-            applyGroup
+            applyGroup,
+            triggers: {
+                ...defaults.triggers,
+                ...parsed.triggers,
+                private: {
+                    ...defaults.triggers.private,
+                    ...parsed.triggers?.private
+                },
+                activity: {
+                    ...defaults.triggers.activity,
+                    ...parsed.triggers?.activity
+                },
+                keyword: {
+                    ...defaults.triggers.keyword,
+                    ...parsed.triggers?.keyword
+                },
+                mention: {
+                    ...defaults.triggers.mention,
+                    ...parsed.triggers?.mention
+                },
+                topic: {
+                    ...defaults.triggers.topic,
+                    ...parsed.triggers?.topic
+                },
+                model: {
+                    ...defaults.triggers.model,
+                    ...parsed.triggers?.model
+                },
+                schedule: {
+                    ...defaults.triggers.schedule,
+                    ...parsed.triggers?.schedule
+                }
+            }
         } as CharacterConfig
 
         const groupsDir = path.join(this._configPath, 'groups')

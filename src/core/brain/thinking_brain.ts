@@ -10,6 +10,9 @@ import type {
 import { ContextAnalyzer } from './context_analyzer'
 import { DecisionMaker } from './decision_maker'
 import { PreferenceAdjuster } from './preference_adjuster'
+import { Logger } from 'koishi'
+
+const logger = new Logger('chatluna-character-v1')
 
 export type DecisionHook = (
     context: ThinkingContext,
@@ -35,17 +38,25 @@ export class ThinkingBrain {
 
     async think(context: ThinkingContext): Promise<ThinkingResult> {
         const model = await this.modelScheduler.getThinkingModel()
+        logger.info(
+            `[ThinkingBrain.think] start guild=${context.session.guildId} user=${context.session.userId} model=${model.modelName} messages=${context.messages.length}`
+        )
         const contextCallbacks = this.statsService?.createInvokeCallbacks({
             session: context.session,
             modelName: model.modelName,
             invokeType: 'thinking_context',
             conversationId: context.session.guildId ?? context.session.userId
         })
+        logger.info(`[ThinkingBrain.think] running ContextAnalyzer...`)
         const contextAnalysis = await this._analyzer.analyze(
             model,
             context,
             contextCallbacks
         )
+        logger.info(
+            `[ThinkingBrain.think] ContextAnalysis: topic=${contextAnalysis.topic} atmosphere=${contextAnalysis.atmosphere} interestLevel=${contextAnalysis.interestLevel} groupActivity=${contextAnalysis.groupActivity}`
+        )
+        logger.info(`[ThinkingBrain.think] running DecisionMaker...`)
         let behaviorDecision = await this._decisionMaker.decide(
             model,
             context,
@@ -58,6 +69,9 @@ export class ThinkingBrain {
                     context.session.guildId ?? context.session.userId
             })
         )
+        logger.info(
+            `[ThinkingBrain.think] BehaviorDecision: shouldRespond=${behaviorDecision.shouldRespond} responseTone=${behaviorDecision.responseTone} warmGroup=${behaviorDecision.warmGroup} observations=${behaviorDecision.observations?.length ?? 0}`
+        )
 
         for (const hook of this._decisionHooks) {
             behaviorDecision = await hook(
@@ -67,12 +81,16 @@ export class ThinkingBrain {
             )
         }
 
+        logger.info(`[ThinkingBrain.think] running PreferenceAdjuster...`)
         const preferenceAdjustment = await this._preferenceAdjuster.adjust(
             context,
             behaviorDecision
         )
 
         const warmGroupTrigger = this.shouldWarmGroup(context, behaviorDecision)
+        logger.info(
+            `[ThinkingBrain.think] done shouldRespond=${behaviorDecision.shouldRespond} warmGroupTrigger=${warmGroupTrigger}`
+        )
 
         return {
             contextAnalysis,

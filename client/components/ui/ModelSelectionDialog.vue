@@ -443,7 +443,7 @@ const filteredModels = computed(() => {
 })
 
 const selectModel = (model: any) => {
-    emit('select', model.name)
+    emit('select', `${model.platform}/${model.name}`)
     visible.value = false
 }
 

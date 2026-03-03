@@ -280,8 +280,14 @@ export interface StatsActivityItem {
     guildId: string
     type: string
     description: string
+    modelName?: string
     tokens?: number
     timestamp: number
+}
+
+export interface MentionTriggerConfig extends TriggerSwitchConfig {
+    respondToAt: boolean
+    respondToQuote: boolean
 }
 
 export interface ScheduleTriggerConfig extends TriggerSwitchConfig {
@@ -292,9 +298,11 @@ export interface TriggerConfig {
     private: TriggerSwitchConfig
     activity: ActivityTriggerConfig
     keyword: KeywordTriggerConfig
+    mention: MentionTriggerConfig
     topic: TopicTriggerConfig
     model: TriggerSwitchConfig
     schedule: ScheduleTriggerConfig
+    idle: IdleTriggerConfig
 }
 
 export interface ThinkingBrainConfig {
@@ -391,6 +399,7 @@ export interface MuteConfig {
 export interface CharacterConfig {
     applyGroup: string[]
     reverseApplyGroup?: boolean
+    preset?: string
     global: GlobalConfig
     models: ModelConfig
     triggers: TriggerConfig
@@ -529,6 +538,102 @@ export interface TriggerState {
     afterMessageId?: string
 }
 
+// ─── Active trigger types ────────────────────────────────────────────
+
+/**
+ * A pending next_reply trigger.
+ *
+ * `condition` is a JavaScript expression string evaluated in a sandbox with:
+ *   - `silence` — seconds since last user message in this target
+ *   - `silenceOf(userId)` — seconds since last message from a specific user
+ *   - `said(userId)` — whether the user has spoken since this trigger was created
+ *   - `now` — current epoch-ms
+ *   - `createdAt` — epoch-ms when this trigger was registered
+ *
+ * Examples:
+ *   "silence > 30"
+ *   "said('12345')"
+ *   "silence > 30 && said('12345')"
+ *   "silence > 30 || said('12345')"
+ *   "silenceOf('12345') > 60"
+ */
+export interface PendingNextReply {
+    /** JS expression condition string. */
+    condition: string
+    /** Human-readable description of why this was registered. */
+    reason: string
+    createdAt: number
+}
+
+export interface PendingWakeUpReply {
+    /** Target time in "YYYY/MM/DD-HH:mm:ss" format. */
+    rawTime: string
+    reason: string
+    naturalReason: string
+    /** Epoch-ms timestamp when the wake-up should fire. */
+    triggerAt: number
+    createdAt: number
+}
+
+/** Database row for persisted wake-up triggers (survives restart). */
+export interface CharacterActiveTriggerRow {
+    id: string
+    /** "group" | "private" */
+    targetType: string
+    /** guildId or userId */
+    targetId: string
+    /** "wake_up" | "next_reply" */
+    triggerType: string
+    /** Raw time string for wake_up, raw reason for next_reply */
+    payload: string
+    /** Human-readable reason */
+    reason: string
+    /** Epoch-ms when the trigger should fire */
+    triggerAt: number
+    /** Epoch-ms when the trigger was created */
+    createdAt: Date
+}
+
+/** Configuration for idle (long-silence) active trigger. */
+export interface IdleTriggerConfig extends TriggerSwitchConfig {
+    /** Minutes of silence before first idle trigger. */
+    intervalMinutes: number
+    /** Retry strategy: 'fixed' or 'exponential'. */
+    retryStyle: 'fixed' | 'exponential'
+    /** Max interval minutes (for exponential). */
+    maxIntervalMinutes: number
+    /** Whether to add jitter to the wait time. */
+    enableJitter: boolean
+}
+
+// ─── Chat service interface (reply pipeline only) ───────────────────
+
+export interface CharacterChatService {
+    /**
+     * Trigger a reply in the given target (group or private).
+     * This drives the full pipeline: build context → trigger decide →
+     * thinking brain → agent execute → send response.
+     *
+     * @returns `true` if a reply was actually sent.
+     */
+    triggerReply(
+        targetType: 'group' | 'private',
+        targetId: string,
+        reason: string
+    ): Promise<boolean>
+
+    /**
+     * Handle a passively-collected message (called by MessageCollector).
+     * This is the entry point for the normal message → trigger → reply flow.
+     */
+    handlePassiveCollect(
+        session: Session,
+        context: MessageContext,
+        ticket: ResponseQueueTicket<MessageContext>,
+        scheduleTask?: ScheduleTask
+    ): Promise<void>
+}
+
 export const CHARACTER_EVENTS = {
     configUpdated: 'chatluna_character/config_updated'
 } as const
@@ -556,9 +661,9 @@ export interface CharacterPresetService {
 }
 
 export interface CharacterModelSchedulerService {
-    getMainModel(): Promise<ChatLunaChatModel>
-    getAnalysisModel(): Promise<ChatLunaChatModel>
-    getThinkingModel(): Promise<ChatLunaChatModel>
+    getMainModel(guildId?: string): Promise<ChatLunaChatModel>
+    getAnalysisModel(guildId?: string): Promise<ChatLunaChatModel>
+    getThinkingModel(guildId?: string): Promise<ChatLunaChatModel>
 }
 
 export interface CharacterMemoryService {
@@ -602,6 +707,16 @@ export interface CharacterStatsService {
         sent: number[]
     }>
     getRecentActivities(limit?: number): Promise<StatsActivityItem[]>
+    getModelUsageDistribution(
+        period: StatsPeriod
+    ): Promise<{ model: string; value: number }[]>
+    getModelUsageChart(period: StatsPeriod): Promise<{
+        labels: string[]
+        datasets: { model: string; data: number[] }[]
+    }>
+    getModelGroupRankings(
+        limit?: number
+    ): Promise<{ guildId: string; modelName: string; tokens: number }[]>
 }
 
 export interface ChatLunaCharacterService {
@@ -632,6 +747,7 @@ export interface TriggerContext {
 }
 
 export interface TriggerService {
+    // ─── Passive trigger management (message-driven) ─────────────────
     registerTrigger(trigger: BaseTrigger): void
     listTriggers(): BaseTrigger[]
     decide(context: TriggerContext): Promise<DecisionResult>
@@ -646,6 +762,74 @@ export interface TriggerService {
         action: string,
         payload: Record<string, unknown>
     ): Record<string, TriggerState>
+
+    // ─── Active trigger management (timer-driven) ────────────────────
+
+    /**
+     * Register a delayed reply whose condition is a JS expression.
+     *
+     * The expression is evaluated in a sandbox with these variables:
+     *   - `silence`  — seconds since last user message
+     *   - `silenceOf(userId)` — seconds since last message from that user
+     *   - `said(userId)` — true if user sent a message since trigger was created
+     *   - `now` — current epoch-ms
+     *   - `createdAt` — epoch-ms when trigger was registered
+     */
+    registerNextReply(
+        targetType: 'group' | 'private',
+        targetId: string,
+        condition: string,
+        reason?: string
+    ): boolean
+
+    /**
+     * Register a wake-up trigger at a specific time.
+     * Time format: "YYYY/MM/DD-HH:mm:ss".
+     * Persisted to database; survives restart.
+     */
+    registerWakeUp(
+        targetType: 'group' | 'private',
+        targetId: string,
+        rawTime: string,
+        reason: string
+    ): Promise<boolean>
+
+    /** Record that a user just sent a message in a target. */
+    recordUserMessage(
+        targetType: 'group' | 'private',
+        targetId: string,
+        userId: string
+    ): void
+
+    /**
+     * Notify the service that a response was sent for a target.
+     * Used to clear stale next_reply triggers.
+     */
+    notifyResponseSent(targetType: 'group' | 'private', targetId: string): void
+
+    /** Clear all pending next_reply triggers for a target. */
+    clearNextReplies(targetType: 'group' | 'private', targetId: string): void
+
+    /** Clear all pending wake_up triggers for a target. */
+    clearWakeUps(
+        targetType: 'group' | 'private',
+        targetId: string
+    ): Promise<void>
+
+    /** Clear everything (next_reply + wake_up) for a target. */
+    clearAll(targetType: 'group' | 'private', targetId: string): Promise<void>
+
+    /** List pending next-reply triggers for a target. */
+    listNextReplies(
+        targetType: 'group' | 'private',
+        targetId: string
+    ): PendingNextReply[]
+
+    /** List pending wake-up triggers for a target. */
+    listWakeUps(
+        targetType: 'group' | 'private',
+        targetId: string
+    ): PendingWakeUpReply[]
 }
 
 export function mergeGuildConfig(
@@ -672,6 +856,10 @@ export function mergeGuildConfig(
                 ...base.triggers.keyword,
                 ...override.triggers?.keyword
             },
+            mention: {
+                ...base.triggers.mention,
+                ...override.triggers?.mention
+            },
             topic: {
                 ...base.triggers.topic,
                 ...override.triggers?.topic
@@ -680,6 +868,10 @@ export function mergeGuildConfig(
             schedule: {
                 ...base.triggers.schedule,
                 ...override.triggers?.schedule
+            },
+            idle: {
+                ...base.triggers.idle,
+                ...override.triggers?.idle
             }
         },
         thinkingBrain: mergeOptional(
@@ -722,6 +914,7 @@ declare module 'koishi' {
         chatluna_character_event: CharacterEventRow
         chatluna_character_token_usage: CharacterTokenUsageRow
         chatluna_character_daily_stats: CharacterDailyStatsRow
+        chatluna_character_active_trigger: CharacterActiveTriggerRow
     }
 
     interface Context {
@@ -731,6 +924,7 @@ declare module 'koishi' {
         chatluna_character: ChatLunaCharacterService
         chatluna_character_message_collector: MessageCollectorService
         chatluna_character_triggers: TriggerService
+        chatluna_character_chat: CharacterChatService
         chatluna_character_memory?: CharacterMemoryService
         chatluna_character_schedule?: CharacterScheduleService
         chatluna_character_stats?: CharacterStatsService
@@ -789,6 +983,26 @@ declare module '@koishijs/console' {
         'character/getMessageActivityChart': (options: {
             period: StatsPeriod
         }) => Promise<{ labels: string[]; received: number[]; sent: number[] }>
+        'character/getModelUsageDistribution': (options: {
+            period: StatsPeriod
+        }) => Promise<{ model: string; value: number }[]>
+        'character/getModelUsageChart': (options: {
+            period: StatsPeriod
+        }) => Promise<{
+            labels: string[]
+            datasets: { model: string; data: number[] }[]
+        }>
+        'character/getModelGroupRankings': (options?: {
+            limit?: number
+        }) => Promise<{ guildId: string; modelName: string; tokens: number }[]>
+        'character/getActiveTriggers': (guildId: string) => Promise<{
+            nextReplies: PendingNextReply[]
+            wakeUps: PendingWakeUpReply[]
+        }>
+        'character/cancelActiveTrigger': (
+            guildId: string,
+            kind: 'next_reply' | 'wake_up' | 'all'
+        ) => Promise<{ success: boolean }>
         'character/getGroups': (keywords: string) => Promise<
             {
                 id: string
@@ -803,5 +1017,5 @@ declare module '@koishijs/console' {
 export type DeepNonNullable<T> = T extends (infer U)[]
     ? DeepNonNullable<NonNullable<U>>[]
     : T extends object
-    ? { [K in keyof T]-?: DeepNonNullable<NonNullable<T[K]>> }
-    : NonNullable<T>
+      ? { [K in keyof T]-?: DeepNonNullable<NonNullable<T[K]>> }
+      : NonNullable<T>

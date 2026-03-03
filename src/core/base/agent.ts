@@ -17,10 +17,13 @@ import type {
 } from '../../types'
 import { MessageFormatter } from '../../utils/message-formatter'
 import {
+    createCancelActiveTriggersTool,
     createMemoryTool,
     createObservationTool,
     createReplyTool,
+    createScheduleNextReplyTool,
     createScheduleTool,
+    createScheduleWakeUpTool,
     createSearchTool,
     createTriggerControlTool,
     ToolRegistry
@@ -37,9 +40,18 @@ export class CharacterAgent {
         this._registry.register('reply', createReplyTool)
         this._registry.register('memory', createMemoryTool)
         this._registry.register('schedule', createScheduleTool)
-        this._registry.register('search', createSearchTool)
+        // this._registry.register('search', createSearchTool)
         this._registry.register('trigger_control', createTriggerControlTool)
         this._registry.register('observe', createObservationTool)
+        this._registry.register('schedule_wakeup', createScheduleWakeUpTool)
+        this._registry.register(
+            'schedule_next_reply',
+            createScheduleNextReplyTool
+        )
+        this._registry.register(
+            'cancel_active_triggers',
+            createCancelActiveTriggersTool
+        )
     }
 
     registerToolsToChatLuna() {
@@ -49,14 +61,25 @@ export class CharacterAgent {
     }
 
     async execute(context: AgentContext): Promise<AgentResult> {
+        const logger = this._logger('chatluna-character-v1')
+        logger.info(
+            `[agent.execute] guild=${context.session.guildId} user=${context.session.userId} preset=${context.preset?.name} messages=${context.messages.length}`
+        )
         const systemPrompt = await this.buildSystemPrompt(context)
+        logger.info(
+            `[agent.execute] systemPrompt length=${systemPrompt.length}`
+        )
         const messages = await this.buildMessages(context)
+        logger.info(`[agent.execute] built ${messages.length} message(s)`)
         const response = await this.invokeWithTools(
             context.session,
             context.config,
             systemPrompt,
             messages,
             context
+        )
+        logger.info(
+            `[agent.execute] response length=${String(response.content ?? '').length}: ${String(response.content ?? '').slice(0, 120)}`
         )
 
         return {
@@ -72,8 +95,15 @@ export class CharacterAgent {
         messages: BaseMessage[],
         context: AgentContext
     ): Promise<AIMessageChunk> {
+        const logger = this._logger('chatluna-character-v1')
         const model =
             await this.ctx.chatluna_character_model_scheduler.getMainModel()
+        logger.info(
+            `[agent.invokeWithTools] model=${model.modelName} tools=${this._registry
+                .createTools()
+                .map((t) => t.name)
+                .join(',')}`
+        )
         const tools = this._registry.createTools()
         const toolContext = {
             ctx: this.ctx,
@@ -105,6 +135,9 @@ export class CharacterAgent {
                     invokeType: 'agent',
                     conversationId: session.guildId ?? session.userId
                 })
+            logger.info(
+                `[agent.invokeWithTools] invoking agent executor guild=${session.guildId}`
+            )
             const output = await executorRef.value.invoke(
                 {
                     input: messages[messages.length - 1],
@@ -121,6 +154,10 @@ export class CharacterAgent {
                 }
             )
 
+            logger.info(
+                `[agent.invokeWithTools] agent executor finished, intermediateSteps=${output.intermediateSteps?.length ?? 0}`
+            )
+            this.ctx.logger.info('Agent output', output)
             return new AIMessageChunk({
                 content: output.output ?? ''
             })
@@ -137,11 +174,13 @@ export class CharacterAgent {
             sendTokenLimit:
                 model.invocationParams().maxTokenLimit ??
                 model.getModelMaxContextSize(),
-            promptRenderService: this.ctx.chatluna.promptRenderer
+            promptRenderService: this.ctx.chatluna.promptRenderer,
+            contextManager: this.ctx.chatluna.contextManager
         })
     }
 
     private async buildSystemPrompt(context: AgentContext): Promise<string> {
+        const logger = this._logger('chatluna-character-v1')
         const now = new Date()
         const status = context.preset.status ?? ''
         const base = await context.preset.system.format(
@@ -184,6 +223,10 @@ export class CharacterAgent {
         if (context.triggerInfo?.reason) {
             extras.push(`Trigger reason: ${context.triggerInfo.reason}`)
         }
+
+        logger.info(
+            `[agent.buildSystemPrompt] extras=${extras.length} (thinkingResult=${!!context.thinkingResult}, schedule=${!!context.schedule?.dailyPlan || !!context.schedule?.behaviorState}, memories=${context.memory?.relevantMemories?.length ?? 0}, triggerReason=${!!context.triggerInfo?.reason})`
+        )
 
         if (extras.length === 0) {
             return base

@@ -32,7 +32,7 @@ const memorySchema = z.object({
         .optional(),
     types: z.array(z.string()).optional(),
     layers: z.array(z.enum(['short-term', 'long-term'])).optional(),
-    limit: z.number().int().positive().optional(),
+    limit: z.number().optional(),
     includeEvents: z.boolean().optional(),
     id: z.string().optional()
 })

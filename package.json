@@ -41,8 +41,10 @@
     },
     "homepage": "https://github.com/ChatLunaLab/chatluna-character-new#readme",
     "dependencies": {
+        "@element-plus/icons-vue": "^2.3.2",
         "@langchain/core": "^0.3.80",
         "echarts": "^5.6.0",
+        "element-plus": "^2.7.7",
         "he": "^1.2.0",
         "js-yaml": "^4.1.0",
         "marked": "^15.0.12",

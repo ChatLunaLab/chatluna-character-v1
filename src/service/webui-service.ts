@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 import type { Context } from 'koishi'
-import type { } from '@koishijs/plugin-console'
+import type {} from '@koishijs/plugin-console'
 import type { Config } from '../config'
 import type { PresetTemplate, PromptTemplate } from '../types'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -25,7 +25,8 @@ export function applyWebUI(ctx: Context, config: Config) {
             'chatluna',
             'chatluna_character_config',
             'chatluna_character_preset',
-            'chatluna_character_stats'
+            'chatluna_character_stats',
+            'chatluna_character_triggers'
         ],
         async (ctx) => {
             ctx.console.addEntry({
@@ -49,12 +50,18 @@ export function applyWebUI(ctx: Context, config: Config) {
                             do {
                                 const list = await bot.getGuildList(nextToken)
                                 for (const guild of list.data) {
-                                    if (
-                                        keyword &&
-                                        !guild.id.includes(keyword) &&
-                                        !guild.name?.includes(keyword)
-                                    ) {
-                                        continue
+                                    if (keyword) {
+                                        const kw = keyword.toLowerCase()
+                                        if (
+                                            !guild.id
+                                                .toLowerCase()
+                                                .includes(kw) &&
+                                            !guild.name
+                                                ?.toLowerCase()
+                                                .includes(kw)
+                                        ) {
+                                            continue
+                                        }
                                     }
                                     groups.push({
                                         id: guild.id,
@@ -212,6 +219,41 @@ export function applyWebUI(ctx: Context, config: Config) {
                 }
             )
 
+            ctx.console.addListener(
+                'character/getActiveTriggers',
+                async (guildId: string) => {
+                    const triggers = ctx.chatluna_character_triggers
+                    if (!triggers) {
+                        return { nextReplies: [], wakeUps: [] }
+                    }
+                    return {
+                        nextReplies: triggers.listNextReplies('group', guildId),
+                        wakeUps: triggers.listWakeUps('group', guildId)
+                    }
+                }
+            )
+
+            ctx.console.addListener(
+                'character/cancelActiveTrigger',
+                async (
+                    guildId: string,
+                    kind: 'next_reply' | 'wake_up' | 'all'
+                ) => {
+                    const triggers = ctx.chatluna_character_triggers
+                    if (!triggers) {
+                        throw new Error('Trigger service not available.')
+                    }
+                    if (kind === 'next_reply') {
+                        triggers.clearNextReplies('group', guildId)
+                    } else if (kind === 'wake_up') {
+                        await triggers.clearWakeUps('group', guildId)
+                    } else {
+                        await triggers.clearAll('group', guildId)
+                    }
+                    return { success: true }
+                }
+            )
+
             ctx.console.addListener('character/getStats', async () => {
                 const stats = ctx.chatluna_character_stats
                 if (!stats) {
@@ -273,6 +315,42 @@ export function applyWebUI(ctx: Context, config: Config) {
                     }
                     return await stats.getMessageActivityChart(
                         options?.period ?? 'week'
+                    )
+                }
+            )
+
+            ctx.console.addListener(
+                'character/getModelUsageDistribution',
+                async (options) => {
+                    const stats = ctx.chatluna_character_stats
+                    if (!stats) {
+                        return []
+                    }
+                    return await stats.getModelUsageDistribution(
+                        options?.period ?? 'week'
+                    )
+                }
+            )
+
+            ctx.console.addListener(
+                'character/getModelUsageChart',
+                async (options) => {
+                    const stats = ctx.chatluna_character_stats
+                    if (!stats) {
+                        return { labels: [], datasets: [] }
+                    }
+                    return await stats.getModelUsageChart(
+                        options?.period ?? 'week'
+                    )
+                }
+            )
+            ctx.console.addListener(
+                'character/getModelGroupRankings',
+                async (options) => {
+                    const stats = ctx.chatluna_character_stats
+                    if (!stats) return []
+                    return await stats.getModelGroupRankings(
+                        options?.limit ?? 10
                     )
                 }
             )

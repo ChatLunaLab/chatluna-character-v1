@@ -27,6 +27,8 @@ export class MessageCollector
     private readonly _filters: MessageCollectorFilter[] = []
     private readonly _config: MessageCollectorConfig
 
+    static inject = ['chatluna_character_config']
+
     constructor(ctx: Context, config?: Partial<MessageCollectorConfig>) {
         super(ctx, 'chatluna_character_message_collector')
         this._config = { ...DEFAULT_COLLECTOR_CONFIG, ...config }
@@ -66,6 +68,7 @@ export class MessageCollector
             return false
         }
 
+        const logger = this.ctx.logger('chatluna-character-v1')
         const message = this._normalizeSession(session)
         const context = this._getOrCreateContext(session)
         context.messages.push(message)
@@ -80,7 +83,14 @@ export class MessageCollector
             await this._applyImageLimits(context, characterConfig)
         }
 
+        logger.info(
+            `[MessageCollector.handleSession] guild=${session.guildId} user=${session.userId} totalMessages=${context.messages.length} content=${message.content?.slice(0, 60)}`
+        )
+
         const shouldTrigger = await this._runFilters(session, message, context)
+        logger.info(
+            `[MessageCollector.handleSession] filters result: shouldTrigger=${shouldTrigger} guild=${session.guildId}`
+        )
 
         if (!shouldTrigger) {
             return false
@@ -92,9 +102,15 @@ export class MessageCollector
         )
 
         if (!ticket) {
+            logger.info(
+                `[MessageCollector.handleSession] could not acquire queue ticket guild=${session.guildId}, skip`
+            )
             return false
         }
 
+        logger.info(
+            `[MessageCollector.handleSession] acquired ticket, emitting collect event guild=${session.guildId}`
+        )
         await this.ctx.parallel(
             'chatluna_character/message_collect',
             session,
@@ -338,19 +354,19 @@ export class MessageCollector
 
     private _resolveUserId(session: Session): string {
         return (
-            session.author?.id ??
-            session.userId ??
-            session.event?.user?.id ??
+            session.author?.id ||
+            session.userId ||
+            session.event?.user?.id ||
             'unknown'
         )
     }
 
     private _resolveUserName(session: Session, fallback: string): string {
         return (
-            session.author?.nick ??
-            session.author?.name ??
-            session.username ??
-            session.event?.user?.name ??
+            session.author?.nick ||
+            session.author?.name ||
+            session.username ||
+            session.event?.user?.name ||
             fallback
         )
     }

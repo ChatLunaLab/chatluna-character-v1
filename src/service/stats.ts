@@ -22,6 +22,8 @@ export class StatsService extends Service {
         this.defineDatabase()
     }
 
+    static inject = ['chatluna_character_config', 'chatluna_character_preset']
+
     createInvokeCallbacks(meta: StatsInvokeMeta): Callbacks {
         return [
             {
@@ -207,9 +209,93 @@ export class StatsService extends Service {
                 description: row.invokeType
                     ? `${row.invokeType} invoke`
                     : 'model invoke',
+                modelName: row.modelName,
                 tokens: row.totalTokens,
                 timestamp: normalizeTimestamp(row.timestamp)
             }))
+    }
+
+    async getModelUsageDistribution(
+        period: StatsPeriod
+    ): Promise<{ model: string; value: number }[]> {
+        const range = buildPeriodRange(period)
+        const rows = (await this.ctx.database.get(TOKEN_TABLE, {
+            timestamp: { $gte: range.start, $lte: range.end }
+        })) as CharacterTokenUsageRow[]
+
+        const distribution: Record<string, number> = {}
+        for (const row of rows) {
+            const model = row.modelName || 'unknown'
+            distribution[model] = (distribution[model] || 0) + row.totalTokens
+        }
+
+        return Object.entries(distribution)
+            .map(([model, value]) => ({ model, value }))
+            .sort((a, b) => b.value - a.value)
+    }
+
+    async getModelUsageChart(period: StatsPeriod): Promise<{
+        labels: string[]
+        datasets: { model: string; data: number[] }[]
+    }> {
+        const range = buildPeriodRange(period)
+        const rows = (await this.ctx.database.get(TOKEN_TABLE, {
+            timestamp: { $gte: range.start, $lte: range.end }
+        })) as CharacterTokenUsageRow[]
+
+        const models = Array.from(
+            new Set(rows.map((r) => r.modelName || 'unknown'))
+        )
+        const labels: string[] = []
+        for (let i = 0; i < range.days; i++) {
+            labels.push(
+                formatChartLabel(formatDateKey(shiftDate(range.start, i)))
+            )
+        }
+
+        const datasets = models.map((model) => {
+            const data = new Array(range.days).fill(0)
+            return { model, data }
+        })
+
+        const modelMap = new Map(datasets.map((d) => [d.model, d.data]))
+
+        for (const row of rows) {
+            const model = row.modelName || 'unknown'
+            const dateKey = formatDateKey(
+                new Date(normalizeTimestamp(row.timestamp))
+            )
+
+            const index = labels.indexOf(formatChartLabel(dateKey))
+            if (index !== -1) {
+                modelMap.get(model)![index] += row.totalTokens
+            }
+        }
+
+        return { labels, datasets }
+    }
+
+    async getModelGroupRankings(
+        limit = 10
+    ): Promise<{ guildId: string; modelName: string; tokens: number }[]> {
+        const rows = (await this.ctx.database.get(
+            TOKEN_TABLE,
+            {}
+        )) as CharacterTokenUsageRow[]
+
+        const map = new Map<string, number>()
+        for (const row of rows) {
+            const key = `${row.guildId ?? 'unknown'}__${row.modelName || 'unknown'}`
+            map.set(key, (map.get(key) ?? 0) + row.totalTokens)
+        }
+
+        return Array.from(map.entries())
+            .map(([key, tokens]) => {
+                const [guildId, modelName] = key.split('__')
+                return { guildId, modelName, tokens }
+            })
+            .sort((a, b) => b.tokens - a.tokens)
+            .slice(0, limit)
     }
 
     private async updateDailyStats(

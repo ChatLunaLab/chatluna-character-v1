@@ -3,9 +3,8 @@
         <div v-if="activeSection === 'general'">
             <ConfigList>
                 <ConfigListItem
-                    v-if="isGuildConfig"
                     :label="t('character.config.preset')"
-                    :description="t('character.config.presetDescription')"
+                    :description="isGuildConfig ? t('character.config.presetDescription') : t('character.config.globalPresetDescription')"
                 >
                     <el-select
                         v-model="(modelValue as any).preset"
@@ -95,6 +94,20 @@
                     >
                         <template #append>
                             <el-button @click="openModelDialog('analysis')" class="compact-append-btn">
+                                <el-icon><MoreFilled /></el-icon>
+                            </el-button>
+                        </template>
+                    </el-input>
+                </ConfigListItem>
+                <ConfigListItem
+                    :label="t('character.config.thinkingModel')"
+                    :description="t('character.config.thinkingModelDescription')"
+                >
+                    <el-input
+                        v-model="modelValue.models.thinking"
+                    >
+                        <template #append>
+                            <el-button @click="openModelDialog('thinking')" class="compact-append-btn">
                                 <el-icon><MoreFilled /></el-icon>
                             </el-button>
                         </template>
@@ -394,6 +407,35 @@
                 </template>
             </ConfigList>
 
+            <ConfigList :title="t('character.config.triggers.mention')">
+                <ConfigListItem
+                    :label="t('character.config.enabled')"
+                    :description="t('character.config.enabledDescription')"
+                >
+                    <el-switch
+                        v-model="modelValue.triggers.mention.enabled"
+                    />
+                </ConfigListItem>
+                <template v-if="modelValue.triggers.mention.enabled">
+                    <ConfigListItem
+                        :label="t('character.config.respondToAt')"
+                        :description="t('character.config.respondToAtDescription')"
+                    >
+                        <el-switch
+                            v-model="modelValue.triggers.mention.respondToAt"
+                        />
+                    </ConfigListItem>
+                    <ConfigListItem
+                        :label="t('character.config.respondToQuote')"
+                        :description="t('character.config.respondToQuoteDescription')"
+                    >
+                        <el-switch
+                            v-model="modelValue.triggers.mention.respondToQuote"
+                        />
+                    </ConfigListItem>
+                </template>
+            </ConfigList>
+
             <ConfigList :title="t('character.config.triggers.topic')">
                 <ConfigListItem
                     :label="t('character.config.enabled')"
@@ -436,6 +478,62 @@
                         v-model="modelValue.triggers.schedule.enabled"
                     />
                 </ConfigListItem>
+            </ConfigList>
+
+            <ConfigList :title="t('character.config.triggers.idle')">
+                <ConfigListItem
+                    :label="t('character.config.enabled')"
+                    :description="t('character.config.enabledDescription')"
+                >
+                    <el-switch
+                        v-model="modelValue.triggers.idle.enabled"
+                    />
+                </ConfigListItem>
+                <template v-if="modelValue.triggers.idle.enabled">
+                    <ConfigListItem
+                        :label="t('character.config.idleIntervalMinutes')"
+                        :description="t('character.config.idleIntervalMinutesDescription')"
+                    >
+                        <el-input-number
+                            v-model="modelValue.triggers.idle.intervalMinutes"
+                            :min="1"
+                        />
+                    </ConfigListItem>
+                    <ConfigListItem
+                        :label="t('character.config.idleRetryStyle')"
+                        :description="t('character.config.idleRetryStyleDescription')"
+                    >
+                        <el-select
+                            v-model="modelValue.triggers.idle.retryStyle"
+                        >
+                            <el-option
+                                :label="t('character.config.idleRetryStyleFixed')"
+                                value="fixed"
+                            />
+                            <el-option
+                                :label="t('character.config.idleRetryStyleExponential')"
+                                value="exponential"
+                            />
+                        </el-select>
+                    </ConfigListItem>
+                    <ConfigListItem
+                        :label="t('character.config.idleMaxIntervalMinutes')"
+                        :description="t('character.config.idleMaxIntervalMinutesDescription')"
+                    >
+                        <el-input-number
+                            v-model="modelValue.triggers.idle.maxIntervalMinutes"
+                            :min="1"
+                        />
+                    </ConfigListItem>
+                    <ConfigListItem
+                        :label="t('character.config.idleEnableJitter')"
+                        :description="t('character.config.idleEnableJitterDescription')"
+                    >
+                        <el-switch
+                            v-model="modelValue.triggers.idle.enableJitter"
+                        />
+                    </ConfigListItem>
+                </template>
             </ConfigList>
         </div>
 
@@ -514,9 +612,9 @@ const props = defineProps({
 const { t } = useI18n()
 
 const modelDialogVisible = ref(false)
-const currentSelectingType = ref<'main' | 'analysis'>('main')
+const currentSelectingType = ref<'main' | 'analysis' | 'thinking'>('main')
 
-const openModelDialog = (type: 'main' | 'analysis') => {
+const openModelDialog = (type: 'main' | 'analysis' | 'thinking') => {
     currentSelectingType.value = type
     modelDialogVisible.value = true
 }
@@ -524,8 +622,10 @@ const openModelDialog = (type: 'main' | 'analysis') => {
 const handleModelSelect = (modelName: string) => {
     if (currentSelectingType.value === 'main') {
         props.modelValue.models.main = modelName
-    } else {
+    } else if (currentSelectingType.value === 'analysis') {
         props.modelValue.models.analysis = modelName
+    } else {
+        props.modelValue.models.thinking = modelName
     }
 }
 </script>

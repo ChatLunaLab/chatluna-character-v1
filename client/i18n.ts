@@ -49,6 +49,8 @@ const messages = {
                 preset: 'Preset',
                 presetDescription:
                     'Preset ID for this guild; leave blank to inherit global preset.',
+                globalPresetDescription:
+                    'Default preset applied to all guilds that do not override it.',
                 presetPlaceholder: 'Preset ID',
                 maxMessages: 'Max Messages',
                 maxMessagesDescription:
@@ -65,6 +67,9 @@ const messages = {
                 analysisModel: 'Analysis Model',
                 analysisModelDescription:
                     'Auxiliary model for analyzing message intent and context.',
+                thinkingModel: 'Thinking Model',
+                thinkingModelDescription:
+                    'Model used for deep thinking and reasoning; falls back to analysis model if not set.',
                 replySettings: 'Reply Settings',
                 typingTime: 'Typing Delay',
                 typingTimeDescription:
@@ -134,9 +139,11 @@ const messages = {
                     activity: 'Activity',
                     private: 'Private',
                     keyword: 'Keyword',
+                    mention: 'Mention',
                     topic: 'Topic',
                     model: 'Model',
-                    schedule: 'Schedule'
+                    schedule: 'Schedule',
+                    idle: 'Idle'
                 },
                 enabled: 'Enabled',
                 enabledDescription: 'Enable this trigger.',
@@ -153,6 +160,12 @@ const messages = {
                 keywordsDescription:
                     'Trigger a reply when messages contain these keywords.',
                 keywordsPlaceholder: 'Add keywords',
+                respondToAt: 'Respond to @ Mention',
+                respondToAtDescription:
+                    'Trigger a reply when the bot is @mentioned in a message.',
+                respondToQuote: 'Respond to Quoted Messages',
+                respondToQuoteDescription:
+                    'Trigger a reply when the bot\'s message is quoted/replied to.',
                 bufferSize: 'Topic Context Buffer',
                 bufferSizeDescription:
                     'Number of recent messages buffered for topic change detection.',
@@ -164,7 +177,21 @@ const messages = {
                     'Location used to fetch weather and local time info.',
                 timezone: 'Timezone',
                 timezoneDescription:
-                    'Timezone for scheduled tasks, e.g. Asia/Shanghai.'
+                    'Timezone for scheduled tasks, e.g. Asia/Shanghai.',
+                idleIntervalMinutes: 'Idle Interval (min)',
+                idleIntervalMinutesDescription:
+                    'Minutes of silence before the first idle trigger fires.',
+                idleRetryStyle: 'Retry Strategy',
+                idleRetryStyleDescription:
+                    'How the idle interval grows after each retry: fixed or exponential.',
+                idleRetryStyleFixed: 'Fixed',
+                idleRetryStyleExponential: 'Exponential',
+                idleMaxIntervalMinutes: 'Max Interval (min)',
+                idleMaxIntervalMinutesDescription:
+                    'Upper bound for the idle interval when using exponential backoff.',
+                idleEnableJitter: 'Enable Jitter',
+                idleEnableJitterDescription:
+                    'Add random jitter to idle wait times to make behavior less predictable.'
             },
             presets: {
                 title: 'Preset Editor',
@@ -212,7 +239,21 @@ const messages = {
                 enabled: 'Enabled',
                 watchedUsers: 'Watched Users',
                 watchedKeywords: 'Watched Keywords',
-                watchedTopics: 'Watched Topics'
+                watchedTopics: 'Watched Topics',
+                activeTriggers: 'Active Triggers',
+                nextReplies: 'Next Replies',
+                wakeUps: 'Wake Ups',
+                noActiveTriggers: 'No active triggers',
+                condition: 'Condition',
+                reason: 'Reason',
+                triggerAt: 'Trigger At',
+                createdAt: 'Created At',
+                cancelAll: 'Cancel All',
+                cancelNextReplies: 'Cancel Next Replies',
+                cancelWakeUps: 'Cancel Wake Ups',
+                cancelSuccess: 'Active triggers cancelled.',
+                cancelFailed: 'Failed to cancel active triggers.',
+                loadActiveFailed: 'Failed to load active triggers.'
             },
             memory: {
                 title: 'Memory Viewer',
@@ -294,7 +335,7 @@ const messages = {
                 deletePresetFailed: 'Failed to delete preset.',
                 deletePresetConfirm: 'Delete preset "{name}"?',
                 deletePresetTitle: 'Confirm',
-                unsavedChangesConfirm: 'You have unsaved changes. Save before switching?',
+                unsavedChangesConfirm: 'You have unsaved changes. Save them before leaving, or discard?',
                 loadMemoriesFailed: 'Failed to load memories.',
                 deleteMemorySuccess: 'Memory deleted.',
                 memoryNotFound: 'Memory not found.',
@@ -303,7 +344,12 @@ const messages = {
                 loadTriggersFailed: 'Failed to load trigger states.',
                 updateTriggerSuccess: 'Trigger updated.',
                 updateTriggerFailed: 'Failed to update trigger.',
-                selectGuildToEdit: 'Select a guild to edit its config.'
+                selectGuildToEdit: 'Select a guild to edit its config.',
+                overwriteWithGlobal: 'Overwrite with Global Config',
+                overwriteWithGlobalTitle: 'Confirm Overwrite',
+                overwriteWithGlobalConfirm:
+                    'This will overwrite the current guild config with the global config (guild preset will be preserved). Continue?',
+                overwriteWithGlobalSuccess: 'Guild config overwritten with global config.'
             }
         },
         common: {
@@ -376,6 +422,8 @@ const messages = {
                 preset: '预设',
                 presetDescription:
                     '此群组使用的角色预设 ID，留空则继承全局预设。',
+                globalPresetDescription:
+                    '应用于所有群组的默认预设，可被群组配置覆盖。',
                 presetPlaceholder: '预设 ID',
                 maxMessages: '最大消息数',
                 maxMessagesDescription:
@@ -391,6 +439,9 @@ const messages = {
                 analysisModel: '分析模型',
                 analysisModelDescription:
                     '用于分析消息内容和意图的辅助语言模型。',
+                thinkingModel: '思考模型',
+                thinkingModelDescription:
+                    '用于深度思考和推理的语言模型，未设置时回退到分析模型。',
                 replySettings: '回复设置',
                 typingTime: '单字打字延迟',
                 typingTimeDescription:
@@ -456,9 +507,11 @@ const messages = {
                     activity: '活跃度',
                     private: '私聊',
                     keyword: '关键词',
+                    mention: '提及',
                     topic: '话题',
                     model: '模型',
-                    schedule: '定时'
+                    schedule: '定时',
+                    idle: '空闲'
                 },
                 enabled: '启用',
                 enabledDescription: '启用此触发器。',
@@ -474,6 +527,12 @@ const messages = {
                 keywords: '关键词',
                 keywordsDescription: '消息中包含这些关键词时触发回复。',
                 keywordsPlaceholder: '添加关键词',
+                respondToAt: '响应 @ 提及',
+                respondToAtDescription:
+                    '消息中 @ 了机器人时触发回复。',
+                respondToQuote: '响应引用消息',
+                respondToQuoteDescription:
+                    '消息引用了机器人的消息时触发回复。',
                 bufferSize: '话题上下文缓冲',
                 bufferSizeDescription:
                     '用于检测话题变化的历史消息缓冲条数。',
@@ -483,7 +542,21 @@ const messages = {
                 locationDescription: '用于获取天气、时间等信息的地点。',
                 timezone: '时区',
                 timezoneDescription:
-                    '定时任务使用的时区，例如 Asia/Shanghai。'
+                    '定时任务使用的时区，例如 Asia/Shanghai。',
+                idleIntervalMinutes: '空闲间隔（分钟）',
+                idleIntervalMinutesDescription:
+                    '静默多少分钟后触发第一次空闲触发。',
+                idleRetryStyle: '重试策略',
+                idleRetryStyleDescription:
+                    '每次重试后空闲间隔的增长方式：固定或指数。',
+                idleRetryStyleFixed: '固定',
+                idleRetryStyleExponential: '指数',
+                idleMaxIntervalMinutes: '最大间隔（分钟）',
+                idleMaxIntervalMinutesDescription:
+                    '使用指数退避时的空闲间隔上限。',
+                idleEnableJitter: '启用抖动',
+                idleEnableJitterDescription:
+                    '为空闲等待时间添加随机抖动，使行为更不可预测。'
             },
             presets: {
                 title: '预设编辑器',
@@ -531,7 +604,21 @@ const messages = {
                 enabled: '启用',
                 watchedUsers: '监听用户',
                 watchedKeywords: '监听关键词',
-                watchedTopics: '监听话题'
+                watchedTopics: '监听话题',
+                activeTriggers: '主动触发器',
+                nextReplies: '条件回复',
+                wakeUps: '定时唤醒',
+                noActiveTriggers: '暂无主动触发器',
+                condition: '条件',
+                reason: '原因',
+                triggerAt: '触发时间',
+                createdAt: '创建时间',
+                cancelAll: '取消全部',
+                cancelNextReplies: '取消条件回复',
+                cancelWakeUps: '取消定时唤醒',
+                cancelSuccess: '主动触发器已取消。',
+                cancelFailed: '取消主动触发器失败。',
+                loadActiveFailed: '加载主动触发器失败。'
             },
             memory: {
                 title: '记忆查看器',
@@ -613,7 +700,7 @@ const messages = {
                 deletePresetFailed: '删除预设失败。',
                 deletePresetConfirm: '确定要删除预设"{name}"吗？',
                 deletePresetTitle: '确认',
-                unsavedChangesConfirm: '你有未保存的修改，是否先保存？',
+                unsavedChangesConfirm: '当前有未保存的修改，是否保存后再离开，还是直接丢弃？',
                 loadMemoriesFailed: '加载记忆失败。',
                 deleteMemorySuccess: '记忆已删除。',
                 memoryNotFound: '未找到该记忆。',
@@ -622,7 +709,12 @@ const messages = {
                 loadTriggersFailed: '加载触发器状态失败。',
                 updateTriggerSuccess: '触发器已更新。',
                 updateTriggerFailed: '更新触发器失败。',
-                selectGuildToEdit: '请先选择一个群组以编辑其配置。'
+                selectGuildToEdit: '请先选择一个群组以编辑其配置。',
+                overwriteWithGlobal: '用全局配置覆盖',
+                overwriteWithGlobalTitle: '确认覆盖',
+                overwriteWithGlobalConfirm:
+                    '这将把当前群组配置覆盖为全局配置（群组预设将保留），是否继续？',
+                overwriteWithGlobalSuccess: '已用全局配置覆盖群组配置。'
             }
         },
         common: {

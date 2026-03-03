@@ -2,6 +2,9 @@ import { HumanMessage } from '@langchain/core/messages'
 import type { Callbacks } from '@langchain/core/callbacks/manager'
 import type { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import type { ContextAnalysis, ThinkingContext } from '../../types'
+import { Logger } from 'koishi'
+
+const logger = new Logger('chatluna-character-v1')
 
 export class ContextAnalyzer {
     async analyze(
@@ -10,11 +13,22 @@ export class ContextAnalyzer {
         callbacks?: Callbacks
     ): Promise<ContextAnalysis> {
         const prompt = buildContextPrompt(context)
+        logger.info(
+            `[ContextAnalyzer.analyze] prompt length=${prompt.length} messages=${context.messages.slice(-20).length} memories=${context.memory?.relevantMemories?.length ?? 0}`
+        )
         const response = await model.invoke(
             [new HumanMessage(prompt)],
             callbacks ? { callbacks } : undefined
         )
-        return parseContextAnalysis(String(response.content ?? ''))
+        const raw = String(response.content ?? '')
+        logger.info(
+            `[ContextAnalyzer.analyze] raw response length=${raw.length}: ${raw.slice(0, 200)}`
+        )
+        const result = parseContextAnalysis(raw)
+        logger.info(
+            `[ContextAnalyzer.analyze] parsed: topic=${result.topic} atmosphere=${result.atmosphere} interestLevel=${result.interestLevel} groupActivity=${result.groupActivity} lastParticipation=${result.lastParticipation}`
+        )
+        return result
     }
 }
 

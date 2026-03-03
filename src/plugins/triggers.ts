@@ -4,6 +4,7 @@ import { TriggerService } from '../core/triggers/trigger-service'
 import {
     ActivityTrigger,
     KeywordTrigger,
+    MentionTrigger,
     ModelTrigger,
     PrivateTrigger,
     ScheduleTrigger,
@@ -16,6 +17,7 @@ export function apply(ctx: Context, _config: Config) {
         ctx.chatluna_character_triggers.registerTrigger(new PrivateTrigger())
         ctx.chatluna_character_triggers.registerTrigger(new ActivityTrigger())
         ctx.chatluna_character_triggers.registerTrigger(new KeywordTrigger())
+        ctx.chatluna_character_triggers.registerTrigger(new MentionTrigger())
         ctx.chatluna_character_triggers.registerTrigger(new TopicTrigger())
         ctx.chatluna_character_triggers.registerTrigger(new ModelTrigger())
         ctx.chatluna_character_triggers.registerTrigger(new ScheduleTrigger())

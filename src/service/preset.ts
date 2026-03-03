@@ -25,6 +25,8 @@ export class PresetService extends Service {
     private _reloadQueued = false
     private _logger = this.ctx.logger('chatluna-character-v1')
 
+    static inject = ['chatluna_character_config']
+
     constructor(ctx: Context) {
         super(ctx, 'chatluna_character_preset')
         this._presetPath = path.resolve(

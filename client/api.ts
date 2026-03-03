@@ -4,6 +4,8 @@ import type {
     CharacterGroupRanking,
     CharacterStatsOverview,
     MemoryRecord,
+    PendingNextReply,
+    PendingWakeUpReply,
     StatsActivityItem,
     StatsPeriod
 } from '../src/types'
@@ -96,6 +98,20 @@ export async function updateTriggerState(
     return await send('character/updateTriggerState', guildId, type, state)
 }
 
+export async function getActiveTriggers(guildId: string): Promise<{
+    nextReplies: PendingNextReply[]
+    wakeUps: PendingWakeUpReply[]
+}> {
+    return await send('character/getActiveTriggers', guildId)
+}
+
+export async function cancelActiveTrigger(
+    guildId: string,
+    kind: 'next_reply' | 'wake_up' | 'all'
+): Promise<{ success: boolean }> {
+    return await send('character/cancelActiveTrigger', guildId, kind)
+}
+
 export async function getStatsOverview(): Promise<CharacterStatsOverview> {
     return await send('character/getStats')
 }
@@ -126,4 +142,16 @@ export async function getMessageActivityChart(period: StatsPeriod): Promise<{
     sent: number[]
 }> {
     return await send('character/getMessageActivityChart', { period })
+}
+
+export async function getModelUsageDistribution(period: StatsPeriod): Promise<{ model: string; value: number }[]> {
+    return await send('character/getModelUsageDistribution', { period })
+}
+
+export async function getModelUsageChart(period: StatsPeriod): Promise<{ labels: string[]; datasets: { model: string; data: number[] }[] }> {
+    return await send('character/getModelUsageChart', { period })
+}
+
+export async function getModelGroupRankings(limit = 10): Promise<{ guildId: string; modelName: string; tokens: number }[]> {
+    return await send('character/getModelGroupRankings', { limit })
 }

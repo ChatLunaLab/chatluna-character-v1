@@ -2,11 +2,14 @@ import { Context, Session } from 'koishi'
 import { Config } from '..'
 
 export function apply(ctx: Context, _config: Config) {
-    ctx.inject(['chatluna_character_message_collector'], (ctx) => {
-        ctx.chatluna_character_message_collector.addFilter((session) => {
-            return shouldCollect(ctx, session)
-        })
-    })
+    ctx.inject(
+        ['chatluna_character_message_collector', 'chatluna_character_config'],
+        (ctx) => {
+            ctx.chatluna_character_message_collector.addFilter((session) => {
+                return shouldCollect(ctx, session)
+            })
+        }
+    )
 }
 
 function shouldCollect(ctx: Context, session: Session) {

@@ -26,6 +26,20 @@
                         <el-option :label="t('character.stats.activityType.error')" value="error" />
                         <el-option :label="t('character.stats.activityType.memory')" value="memory" />
                     </el-select>
+                    <el-select
+                        v-model="filterModel"
+                        size="small"
+                        :placeholder="t('character.tabs.models')"
+                        clearable
+                        class="filter-item model-select"
+                    >
+                        <el-option
+                            v-for="m in availableModels"
+                            :key="m"
+                            :label="m"
+                            :value="m"
+                        />
+                    </el-select>
                     <el-date-picker
                         v-model="dateRange"
                         type="daterange"
@@ -67,6 +81,15 @@
                 </template>
             </el-table-column>
 
+            <el-table-column prop="modelName" :label="t('character.tabs.models')" width="150">
+                <template #default="{ row }">
+                    <el-tag v-if="row.modelName" size="small" type="info" effect="plain">
+                        {{ row.modelName }}
+                    </el-tag>
+                    <span v-else>-</span>
+                </template>
+            </el-table-column>
+
             <el-table-column prop="tokens" :label="t('character.stats.tokens')" width="100" align="right">
                 <template #default="{ row }">
                     <span v-if="row.tokens" class="tokens-badge">
@@ -95,9 +118,15 @@ const { t } = useI18n()
 // Filters
 const searchQuery = ref('')
 const filterType = ref('')
+const filterModel = ref('')
 const dateRange = ref<[number, number] | null>(null)
 
 const rawActivities = ref<any[]>([])
+
+const availableModels = computed(() => {
+    const models = new Set(rawActivities.value.map(a => a.modelName).filter(Boolean))
+    return Array.from(models).sort()
+})
 
 const loadActivities = async () => {
     // Attempt to fetch more logs to simulate a "log" view, though API might limit it.
@@ -112,12 +141,17 @@ const filteredActivities = computed(() => {
         const q = searchQuery.value.toLowerCase()
         result = result.filter(item =>
             item.description?.toLowerCase().includes(q) ||
-            item.guildId?.toLowerCase().includes(q)
+            item.guildId?.toLowerCase().includes(q) ||
+            item.modelName?.toLowerCase().includes(q)
         )
     }
 
     if (filterType.value) {
         result = result.filter(item => item.type === filterType.value)
+    }
+
+    if (filterModel.value) {
+        result = result.filter(item => item.modelName === filterModel.value)
     }
 
     if (dateRange.value) {
@@ -189,6 +223,10 @@ onMounted(() => {
     width: 120px;
 }
 
+.model-select {
+    width: 160px;
+}
+
 .date-picker {
     width: 240px;
 }
@@ -238,7 +276,7 @@ onMounted(() => {
         align-items: stretch;
     }
 
-    .search-input, .type-select, .date-picker {
+    .search-input, .type-select, .date-picker, .model-select {
         width: 100%;
     }
 }

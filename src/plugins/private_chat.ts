@@ -9,6 +9,17 @@ export function apply(ctx: Context, config: Config) {
         if (!shouldHandlePrivate(ctx, session)) {
             return next()
         }
+
+        // Record user message for active trigger evaluation
+        const triggers = ctx.chatluna_character_triggers
+        if (triggers && session.userId) {
+            triggers.recordUserMessage(
+                'private',
+                session.userId,
+                session.userId
+            )
+        }
+
         await ctx.chatluna_character_message_collector.handleSession(session)
         return next()
     })

@@ -36,6 +36,8 @@ export class MemoryService extends Service implements CharacterMemoryService {
     private config: MemoryConfig = DEFAULT_MEMORY_CONFIG
     private cleanupTimer: Disposable
 
+    static inject = ['chatluna_character_config']
+
     constructor(ctx: Context) {
         super(ctx, 'chatluna_character_memory')
         this.defineDatabase()

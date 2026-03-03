@@ -2,7 +2,11 @@
     <el-container class="config-editor">
         <el-aside width="260px" class="editor-sidebar">
             <div class="sidebar-header">
-                <el-radio-group v-model="currentScope" class="scope-switcher">
+                <el-radio-group
+                    :model-value="currentScope"
+                    @change="handleScopeChange"
+                    class="scope-switcher"
+                >
                     <el-radio-button label="global">
                         {{ t('character.config.globalTitle') }}
                     </el-radio-button>
@@ -77,13 +81,27 @@
                     </template>
                     <template #end>
                         <el-button
+                            v-if="currentScope === 'guild' && currentGuildId"
+                            @click="handleOverwriteWithGlobal"
+                            :icon="RefreshLeft"
+                            :title="t('character.messages.overwriteWithGlobal')"
+                        />
+                        <el-button
+                            v-if="isDirty"
+                            type="warning"
+                            :icon="Warning"
+                            :loading="currentScope === 'global' ? savingGlobal : savingGuild"
                             @click="saveCurrentConfig"
+                        >
+                            {{ t('common.unsaved') }}
+                        </el-button>
+                        <el-button
+                            v-else
+                            :icon="Check"
                             :loading="currentScope === 'global' ? savingGlobal : savingGuild"
                             :disabled="currentScope === 'guild' && !currentGuildId"
-                            :icon="Check"
-                            circle
-                        >
-                        </el-button>
+                            @click="saveCurrentConfig"
+                        />
                     </template>
                 </config-toolbar>
             </div>
@@ -116,9 +134,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
     Setting,
     Cpu,
@@ -129,7 +147,9 @@ import {
     MagicStick,
     Lightning,
     Timer,
-    Check
+    Check,
+    RefreshLeft,
+    Warning
 } from '@element-plus/icons-vue'
 import { GlobalConfigForm, GuildSelector } from './config'
 import ConfigToolbar from './ui/ConfigToolbar.vue'
@@ -148,15 +168,42 @@ const { t } = useI18n()
 // State
 const currentScope = ref<'global' | 'guild'>('global')
 const activeSection = ref('general')
-const loadingGlobal = ref(false)
 const savingGlobal = ref(false)
-const loadingGuild = ref(false)
 const savingGuild = ref(false)
 
 const globalConfig = ref<CharacterConfig | null>(null)
 const guildConfig = ref<(CharacterConfig & { preset?: string }) | null>(null)
 const currentGuildId = ref('')
+const previousGuildId = ref('')
 const availablePresets = ref<WebPreset[]>([])
+
+// Dirty tracking via JSON snapshots
+let globalConfigSnapshot = ''
+let guildConfigSnapshot = ''
+const isGlobalDirty = ref(false)
+const isGuildDirty = ref(false)
+
+const isDirty = computed(() =>
+    currentScope.value === 'global' ? isGlobalDirty.value : isGuildDirty.value
+)
+
+watch(
+    globalConfig,
+    (val) => {
+        if (!globalConfigSnapshot) return
+        isGlobalDirty.value = JSON.stringify(val) !== globalConfigSnapshot
+    },
+    { deep: true }
+)
+
+watch(
+    guildConfig,
+    (val) => {
+        if (!guildConfigSnapshot) return
+        isGuildDirty.value = JSON.stringify(val) !== guildConfigSnapshot
+    },
+    { deep: true }
+)
 
 // Computed
 const sectionTitle = computed(() => {
@@ -188,13 +235,12 @@ const loadPresets = async () => {
 }
 
 const loadGlobalConfig = async () => {
-    loadingGlobal.value = true
     try {
         globalConfig.value = await getConfig()
+        globalConfigSnapshot = JSON.stringify(globalConfig.value)
+        isGlobalDirty.value = false
     } catch (error) {
         ElMessage.error(t('character.messages.loadConfigFailed'))
-    } finally {
-        loadingGlobal.value = false
     }
 }
 
@@ -203,6 +249,8 @@ const saveGlobalConfig = async () => {
     savingGlobal.value = true
     try {
         await saveConfig(globalConfig.value)
+        globalConfigSnapshot = JSON.stringify(globalConfig.value)
+        isGlobalDirty.value = false
         ElMessage.success(t('character.messages.saveConfigSuccess'))
     } catch (error) {
         ElMessage.error(t('character.messages.saveConfigFailed'))
@@ -213,13 +261,20 @@ const saveGlobalConfig = async () => {
 
 const loadGuildConfig = async () => {
     if (!currentGuildId.value) return
-    loadingGuild.value = true
     try {
-        guildConfig.value = await getGuildConfig(currentGuildId.value)
+        const loaded = await getGuildConfig(currentGuildId.value)
+        if (!loaded.preset && globalConfig.value) {
+            guildConfig.value = {
+                ...JSON.parse(JSON.stringify(globalConfig.value)),
+                preset: undefined
+            }
+        } else {
+            guildConfig.value = loaded
+        }
+        guildConfigSnapshot = JSON.stringify(guildConfig.value)
+        isGuildDirty.value = false
     } catch (error) {
         ElMessage.error(t('character.messages.loadGuildConfigFailed'))
-    } finally {
-        loadingGuild.value = false
     }
 }
 
@@ -228,6 +283,8 @@ const saveGuildConfigAPI = async () => {
     savingGuild.value = true
     try {
         await saveGuildConfig(currentGuildId.value, guildConfig.value)
+        guildConfigSnapshot = JSON.stringify(guildConfig.value)
+        isGuildDirty.value = false
         ElMessage.success(t('character.messages.saveGuildConfigSuccess'))
     } catch (error) {
         ElMessage.error(t('character.messages.saveGuildConfigFailed'))
@@ -236,18 +293,104 @@ const saveGuildConfigAPI = async () => {
     }
 }
 
-const saveCurrentConfig = () => {
+const saveCurrentConfig = async () => {
     if (currentScope.value === 'global') {
-        saveGlobalConfig()
+        await saveGlobalConfig()
     } else {
-        saveGuildConfigAPI()
+        await saveGuildConfigAPI()
     }
 }
 
-const handleGuildChange = () => {
+/**
+ * Shows unsaved-changes dialog.
+ * Returns true if caller may proceed (saved or discarded),
+ * returns false if user cancelled (caller should abort navigation).
+ */
+const confirmLeaveIfDirty = async (scope: 'global' | 'guild'): Promise<boolean> => {
+    const dirty = scope === 'global' ? isGlobalDirty.value : isGuildDirty.value
+    if (!dirty) return true
+
+    try {
+        await ElMessageBox.confirm(
+            t('character.messages.unsavedChangesConfirm'),
+            t('common.warning'),
+            {
+                confirmButtonText: t('common.save'),
+                cancelButtonText: t('common.discard'),
+                distinguishCancelAndClose: true,
+                closeOnClickModal: false,
+                type: 'warning'
+            }
+        )
+        // User chose Save
+        if (scope === 'global') {
+            await saveGlobalConfig()
+        } else {
+            await saveGuildConfigAPI()
+        }
+        return true
+    } catch (reason) {
+        if (reason === 'cancel') {
+            // User chose Discard — restore from snapshot so stale edits vanish
+            if (scope === 'global') {
+                globalConfig.value = globalConfigSnapshot
+                    ? JSON.parse(globalConfigSnapshot)
+                    : null
+                isGlobalDirty.value = false
+            } else {
+                guildConfig.value = guildConfigSnapshot
+                    ? JSON.parse(guildConfigSnapshot)
+                    : null
+                isGuildDirty.value = false
+            }
+            return true
+        }
+        // 'close' or Escape — user wants to stay
+        return false
+    }
+}
+
+const handleScopeChange = async (newScope: 'global' | 'guild') => {
+    if (!(await confirmLeaveIfDirty(currentScope.value))) return
+    currentScope.value = newScope
+}
+
+const handleGuildChange = async () => {
+    const newGuildId = currentGuildId.value
+    if (previousGuildId.value && isGuildDirty.value) {
+        if (!(await confirmLeaveIfDirty('guild'))) {
+            // Restore previous guild selection
+            currentGuildId.value = previousGuildId.value
+            return
+        }
+    }
+    previousGuildId.value = newGuildId
     guildConfig.value = null
     if (currentGuildId.value) {
-        loadGuildConfig()
+        await loadGuildConfig()
+    }
+}
+
+const handleOverwriteWithGlobal = async () => {
+    if (!globalConfig.value || !currentGuildId.value) return
+    try {
+        await ElMessageBox.confirm(
+            t('character.messages.overwriteWithGlobalConfirm'),
+            t('character.messages.overwriteWithGlobalTitle'),
+            {
+                confirmButtonText: t('common.confirm'),
+                cancelButtonText: t('common.cancel'),
+                type: 'warning'
+            }
+        )
+        const currentPreset = (guildConfig.value as any)?.preset
+        guildConfig.value = {
+            ...JSON.parse(JSON.stringify(globalConfig.value)),
+            preset: currentPreset
+        }
+        ElMessage.success(t('character.messages.overwriteWithGlobalSuccess'))
+    } catch {
+        // user cancelled
     }
 }
 
@@ -385,7 +528,6 @@ onUnmounted(() => {
     padding: 24px;
 }
 
-/* Adjust GlobalConfigForm container width for better readability */
 .editor-content > * {
     width: 100%;
 }
