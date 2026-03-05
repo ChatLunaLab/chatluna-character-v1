@@ -14,6 +14,11 @@
                 <span class="nav-label">
                     {{ tab.label }}
                 </span>
+                <el-badge
+                    v-if="tab.badge !== undefined"
+                    :value="tab.badge"
+                    class="nav-badge"
+                />
             </div>
         </div>
     </div>
@@ -26,6 +31,7 @@ defineProps<{
         label: string
         value: string
         icon: string
+        badge?: number | string
     }>
 }>()
 
@@ -103,6 +109,16 @@ defineEmits<{
     transition: all 0.3s ease;
     font-size: 14px;
     font-weight: 500;
+}
+
+.nav-badge {
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.side-nav:hover .nav-badge {
+    opacity: 1;
 }
 
 .side-nav:hover .nav-label {

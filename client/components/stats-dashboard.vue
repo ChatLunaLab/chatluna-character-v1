@@ -1,5 +1,13 @@
 <template>
     <div class="stats-dashboard">
+        <div class="stats-meta">
+            <el-tag type="info" effect="plain">
+                {{ t('character.config.heartbeatEnabled') }}: {{ stats.heartbeatEnabled ? 'ON' : 'OFF' }}
+            </el-tag>
+            <el-tag v-if="stats.heartbeatUseAgent" type="success" effect="plain">
+                {{ t('character.config.heartbeatUseAgent') }}
+            </el-tag>
+        </div>
         <StatCards :stats="stats" />
         <ChartsSection />
         <GroupRanking />
@@ -9,7 +17,8 @@
 
 <script setup lang="ts">
 import { onMounted, reactive } from 'vue'
-import { getStatsOverview } from '../api'
+import { useI18n } from 'vue-i18n'
+import { getConfig, getStatsOverview } from '../api'
 import StatCards from './dashboard/StatCards.vue'
 import ChartsSection from './dashboard/ChartsSection.vue'
 import GroupRanking from './dashboard/GroupRanking.vue'
@@ -21,12 +30,18 @@ const stats = reactive({
     totalResponses: 0,
     activeGroups: 0,
     tokenTrend: 0,
-    messageTrend: 0
+    messageTrend: 0,
+    heartbeatEnabled: false,
+    heartbeatUseAgent: true
 })
 
+const { t } = useI18n()
+
 const loadStats = async () => {
-    const data = await getStatsOverview()
+    const [data, config] = await Promise.all([getStatsOverview(), getConfig()])
     Object.assign(stats, data)
+    stats.heartbeatEnabled = Boolean(config.thinkingBrain?.heartbeat?.enabled)
+    stats.heartbeatUseAgent = Boolean(config.thinkingBrain?.heartbeat?.useAgent)
 }
 
 onMounted(() => {
@@ -39,5 +54,12 @@ onMounted(() => {
     padding: 16px 0;
     max-width: 1600px;
     margin: 0 auto;
+}
+
+.stats-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 </style>

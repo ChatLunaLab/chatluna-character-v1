@@ -66,6 +66,54 @@
             </el-table>
         </el-card>
 
+        <el-card v-if="guildConfig">
+            <template #header>
+                <div class="card-header">
+                    <span>{{ t('character.config.heartbeatSettings') }}</span>
+                    <div class="header-actions">
+                        <el-button
+                            size="small"
+                            type="primary"
+                            :loading="savingHeartbeat"
+                            @click="saveHeartbeatConfig"
+                        >
+                            {{ t('common.save') }}
+                        </el-button>
+                    </div>
+                </div>
+            </template>
+
+            <div class="heartbeat-settings">
+                <div class="heartbeat-row">
+                    <span>{{ t('character.config.thinkingEnabled') }}</span>
+                    <el-switch
+                        v-model="guildConfig.thinkingBrain.enabled"
+                    />
+                </div>
+
+                <div class="heartbeat-row">
+                    <span>{{ t('character.config.heartbeatEnabled') }}</span>
+                    <el-switch
+                        v-model="guildConfig.thinkingBrain.heartbeat.enabled"
+                        :disabled="!guildConfig.thinkingBrain.enabled"
+                    />
+                </div>
+
+                <div class="heartbeat-row">
+                    <span>{{ t('character.config.heartbeatUseAgent') }}</span>
+                    <el-switch
+                        v-model="guildConfig.thinkingBrain.heartbeat.useAgent"
+                        :disabled="!guildConfig.thinkingBrain.heartbeat.enabled || !guildConfig.thinkingBrain.enabled"
+                    />
+                </div>
+
+                <ScheduleEditor
+                    :config="guildConfig.thinkingBrain.heartbeat"
+                    :disabled="!guildConfig.thinkingBrain.heartbeat.enabled || !guildConfig.thinkingBrain.enabled"
+                />
+            </div>
+        </el-card>
+
         <el-card v-if="activeLoaded">
             <template #header>
                 <div class="card-header">
@@ -171,12 +219,24 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import {
+    getGuildConfig,
+    saveGuildConfig,
     getTriggerStates,
     updateTriggerState,
     getActiveTriggers,
     cancelActiveTrigger
 } from '../api'
-import type { PendingNextReply, PendingWakeUpReply } from '../../src/types'
+import type {
+    CharacterConfig,
+    PendingNextReply,
+    PendingWakeUpReply
+} from '../../src/types'
+import ScheduleEditor from './schedule-editor.vue'
+
+type GuildConfigWithThinking = CharacterConfig & {
+    preset?: string
+    thinkingBrain: NonNullable<CharacterConfig['thinkingBrain']>
+}
 
 type TriggerStateRow = {
     name: string
@@ -192,7 +252,45 @@ const states = ref<Record<string, TriggerStateRow>>({})
 const activeLoaded = ref(false)
 const nextReplies = ref<PendingNextReply[]>([])
 const wakeUps = ref<PendingWakeUpReply[]>([])
+const guildConfig = ref<GuildConfigWithThinking | null>(null)
+const savingHeartbeat = ref(false)
 const { t } = useI18n()
+
+const ensureThinkingConfig = (
+    config: CharacterConfig & { preset?: string }
+): GuildConfigWithThinking => {
+    config.thinkingBrain ??= {
+        enabled: false,
+        warmGroup: {
+            enabled: true,
+            threshold: 1800000
+        },
+        heartbeat: {
+            enabled: true,
+            useAgent: true,
+            defaultDelayMinutes: 5,
+            minDelayMinutes: 1,
+            maxDelayMinutes: 30,
+            maxObservations: 20
+        }
+    }
+
+    config.thinkingBrain.warmGroup ??= {
+        enabled: true,
+        threshold: 1800000
+    }
+
+    config.thinkingBrain.heartbeat ??= {
+        enabled: true,
+        useAgent: true,
+        defaultDelayMinutes: 5,
+        minDelayMinutes: 1,
+        maxDelayMinutes: 30,
+        maxObservations: 20
+    }
+
+    return config as GuildConfigWithThinking
+}
 
 const rows = computed(() =>
     Object.entries(states.value).map(([name, state]) => ({
@@ -217,13 +315,15 @@ const loadAll = async () => {
     }
     loading.value = true
     try {
-        const [statesResult, activeResult] = await Promise.all([
+        const [statesResult, activeResult, guildConfigResult] = await Promise.all([
             getTriggerStates(guildId.value),
-            getActiveTriggers(guildId.value)
+            getActiveTriggers(guildId.value),
+            getGuildConfig(guildId.value)
         ])
         states.value = statesResult as Record<string, TriggerStateRow>
         nextReplies.value = activeResult.nextReplies ?? []
         wakeUps.value = activeResult.wakeUps ?? []
+        guildConfig.value = ensureThinkingConfig(guildConfigResult)
         activeLoaded.value = true
     } catch (error) {
         ElMessage.error(t('character.messages.loadTriggersFailed'))
@@ -248,6 +348,22 @@ const toggleTrigger = async (row: TriggerStateRow) => {
         ElMessage.success(t('character.messages.updateTriggerSuccess'))
     } catch (error) {
         ElMessage.error(t('character.messages.updateTriggerFailed'))
+    }
+}
+
+const saveHeartbeatConfig = async () => {
+    if (!guildId.value || !guildConfig.value) {
+        return
+    }
+
+    savingHeartbeat.value = true
+    try {
+        await saveGuildConfig(guildId.value, guildConfig.value)
+        ElMessage.success(t('character.messages.saveGuildConfigSuccess'))
+    } catch (error) {
+        ElMessage.error(t('character.messages.saveGuildConfigFailed'))
+    } finally {
+        savingHeartbeat.value = false
     }
 }
 
@@ -288,6 +404,19 @@ const cancelActive = async (kind: 'next_reply' | 'wake_up' | 'all') => {
 
 .guild-input {
     width: 180px;
+}
+
+.heartbeat-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.heartbeat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
 }
 
 .active-section {

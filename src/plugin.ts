@@ -5,6 +5,7 @@ import { apply as chat } from './plugins/chat'
 import { apply as commands } from './plugins/commands'
 import { apply as config } from './plugins/config'
 import { apply as filter } from './plugins/filter'
+import { apply as heartbeat } from './plugins/heartbeat'
 import { apply as interception } from './plugins/interception'
 import { apply as memory } from './plugins/memory'
 import { apply as model_scheduler } from './plugins/model_scheduler'
@@ -27,6 +28,7 @@ export async function plugins(ctx: Context, parent: Config) {
             commands,
             config,
             filter,
+            heartbeat,
             interception,
             memory,
             model_scheduler,

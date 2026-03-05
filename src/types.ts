@@ -212,6 +212,14 @@ export interface MemoryQuery {
     includeEvents?: boolean
 }
 
+export interface ShortTermMemory {
+    id: string
+    guildId?: string
+    content: string
+    timestamp: number
+    type: 'observation' | 'analysis' | 'decision'
+}
+
 export interface MemoryContext {
     relevantMemories: MemoryRecord[]
     shortTerm?: MemoryRecord[]
@@ -305,12 +313,22 @@ export interface TriggerConfig {
     idle: IdleTriggerConfig
 }
 
+export interface HeartbeatConfig {
+    enabled: boolean
+    useAgent: boolean
+    defaultDelayMinutes: number
+    minDelayMinutes: number
+    maxDelayMinutes: number
+    maxObservations: number
+}
+
 export interface ThinkingBrainConfig {
     enabled: boolean
     warmGroup: {
         enabled: boolean
         threshold: number
     }
+    heartbeat: HeartbeatConfig
 }
 
 export interface GroupInfo {
@@ -725,6 +743,10 @@ export interface ChatLunaCharacterService {
     modelScheduler: CharacterModelSchedulerService
 }
 
+export interface CharacterHeartbeatService {
+    scheduleHeartbeat(guildId: string, delay: number): void
+}
+
 export interface MessageCollectorService {
     addFilter(filter: MessageCollectorFilter): void
     onCollect(handler: MessageCollectHandler): void
@@ -752,6 +774,13 @@ export interface TriggerService {
     listTriggers(): BaseTrigger[]
     decide(context: TriggerContext): Promise<DecisionResult>
     getStates(stateKey: string): Record<string, TriggerState>
+    getState?(stateKey: string):
+        | {
+              activityScore?: number
+              lastActivity?: number
+              messageCount?: number
+          }
+        | undefined
     updateState(
         stateKey: string,
         triggerName: string,
@@ -874,7 +903,7 @@ export function mergeGuildConfig(
                 ...override.triggers?.idle
             }
         },
-        thinkingBrain: mergeOptional(
+        thinkingBrain: mergeThinkingBrainConfig(
             base.thinkingBrain,
             override.thinkingBrain
         ),
@@ -883,6 +912,42 @@ export function mergeGuildConfig(
         reply: { ...base.reply, ...override.reply },
         image: { ...base.image, ...override.image },
         mute: { ...base.mute, ...override.mute }
+    }
+}
+
+function mergeThinkingBrainConfig(
+    base: ThinkingBrainConfig | undefined,
+    override: Partial<ThinkingBrainConfig> | undefined
+): ThinkingBrainConfig | undefined {
+    if (!base && !override) {
+        return undefined
+    }
+
+    const baseHeartbeat = {
+        enabled: base?.heartbeat?.enabled ?? true,
+        useAgent: base?.heartbeat?.useAgent ?? true,
+        defaultDelayMinutes: base?.heartbeat?.defaultDelayMinutes ?? 5,
+        minDelayMinutes: base?.heartbeat?.minDelayMinutes ?? 1,
+        maxDelayMinutes: base?.heartbeat?.maxDelayMinutes ?? 30,
+        maxObservations: base?.heartbeat?.maxObservations ?? 20
+    }
+
+    return {
+        enabled: override?.enabled ?? base?.enabled ?? false,
+        warmGroup: {
+            enabled:
+                override?.warmGroup?.enabled ??
+                base?.warmGroup?.enabled ??
+                true,
+            threshold:
+                override?.warmGroup?.threshold ??
+                base?.warmGroup?.threshold ??
+                1800000
+        },
+        heartbeat: {
+            ...baseHeartbeat,
+            ...override?.heartbeat
+        }
     }
 }
 
@@ -925,6 +990,7 @@ declare module 'koishi' {
         chatluna_character_message_collector: MessageCollectorService
         chatluna_character_triggers: TriggerService
         chatluna_character_chat: CharacterChatService
+        chatluna_character_heartbeat?: CharacterHeartbeatService
         chatluna_character_memory?: CharacterMemoryService
         chatluna_character_schedule?: CharacterScheduleService
         chatluna_character_stats?: CharacterStatsService

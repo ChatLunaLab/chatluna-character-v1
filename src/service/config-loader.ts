@@ -42,12 +42,25 @@ triggers:
   schedule:
     enabled: false
     tasks: []
+  idle:
+    enabled: false
+    intervalMinutes: 30
+    retryStyle: fixed
+    maxIntervalMinutes: 180
+    enableJitter: true
 
 thinkingBrain:
   enabled: false
   warmGroup:
     enabled: true
     threshold: 1800000
+  heartbeat:
+    enabled: true
+    useAgent: true
+    defaultDelayMinutes: 5
+    minDelayMinutes: 1
+    maxDelayMinutes: 30
+    maxObservations: 20
 
 schedule:
   enabled: false
@@ -88,9 +101,11 @@ export class ConfigLoader extends Service {
     private _watcher: FSWatcher | null = null
     private _reloadInFlight = false
     private _reloadQueued = false
+    private _pluginConfig?: Config
 
-    constructor(ctx: Context, _config?: Config) {
+    constructor(ctx: Context, config?: Config) {
         super(ctx, 'chatluna_character_config')
+        this._pluginConfig = config
 
         this._configPath = path.resolve(ctx.baseDir, 'data/chatluna/character')
 
@@ -149,12 +164,31 @@ export class ConfigLoader extends Service {
         try {
             await fs.access(configFile)
         } catch {
-            await fs.writeFile(configFile, DEFAULT_CONFIG, 'utf-8')
+            await fs.writeFile(
+                configFile,
+                dump(this._getDefaultConfig()),
+                'utf-8'
+            )
         }
     }
 
     private _getDefaultConfig(): CharacterConfig {
-        return load(DEFAULT_CONFIG) as CharacterConfig
+        const defaults = load(DEFAULT_CONFIG) as CharacterConfig
+        const heartbeat = this._pluginConfig?.heartbeat
+
+        if (heartbeat && defaults.thinkingBrain?.heartbeat) {
+            defaults.thinkingBrain.heartbeat = {
+                ...defaults.thinkingBrain.heartbeat,
+                enabled: heartbeat.enabled,
+                useAgent: heartbeat.useAgent,
+                defaultDelayMinutes: heartbeat.defaultDelayMinutes,
+                minDelayMinutes: heartbeat.minDelayMinutes,
+                maxDelayMinutes: heartbeat.maxDelayMinutes,
+                maxObservations: heartbeat.maxObservations
+            }
+        }
+
+        return defaults
     }
 
     private async _loadConfig(): Promise<void> {
@@ -199,6 +233,22 @@ export class ConfigLoader extends Service {
                 schedule: {
                     ...defaults.triggers.schedule,
                     ...parsed.triggers?.schedule
+                },
+                idle: {
+                    ...defaults.triggers.idle,
+                    ...parsed.triggers?.idle
+                }
+            },
+            thinkingBrain: {
+                ...defaults.thinkingBrain,
+                ...parsed.thinkingBrain,
+                warmGroup: {
+                    ...defaults.thinkingBrain!.warmGroup,
+                    ...parsed.thinkingBrain?.warmGroup
+                },
+                heartbeat: {
+                    ...defaults.thinkingBrain!.heartbeat,
+                    ...parsed.thinkingBrain?.heartbeat
                 }
             }
         } as CharacterConfig

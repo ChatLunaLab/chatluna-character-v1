@@ -25,11 +25,14 @@ const logger = new Logger('chatluna-character-v1')
 // ─── Service ─────────────────────────────────────────────────────────
 
 export class ChatService extends Service implements CharacterChatService {
-    static inject = [
-        'chatluna_character_config',
-        'chatluna_character_preset',
-        'chatluna_character_model_scheduler'
-    ]
+    static inject = {
+        required: [
+            'chatluna_character_config',
+            'chatluna_character_preset',
+            'chatluna_character_model_scheduler'
+        ],
+        optional: ['chatluna_character_heartbeat']
+    }
 
     private _agent: CharacterAgent | null = null
     private _parser: ResponseParser | null = null
@@ -258,6 +261,14 @@ export class ChatService extends Service implements CharacterChatService {
                     targetType,
                     targetId
                 )
+                
+                // Trigger heartbeat after reply
+                if (!session.isDirect && guildId) {
+                    this.ctx.chatluna_character_heartbeat?.scheduleHeartbeat(
+                        guildId,
+                        1000
+                    )
+                }
             }
         } finally {
             ticket.release()

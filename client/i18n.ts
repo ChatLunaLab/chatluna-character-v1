@@ -135,6 +135,27 @@ const messages = {
                 warmGroupThreshold: 'Warmup Activity Threshold',
                 warmGroupThresholdDescription:
                     'Activity level threshold that triggers group warmup (0-1).',
+                heartbeatEnabled: 'Enable Heartbeat',
+                heartbeatEnabledDescription:
+                    'Run periodic heartbeat checks to proactively inspect group status.',
+                heartbeatUseAgent: 'Use Tool Agent',
+                heartbeatUseAgentDescription:
+                    'Use tool-calling mode for multi-step heartbeat analysis.',
+                heartbeatSettings: 'Heartbeat Settings',
+                heartbeatSettingsDescription:
+                    'Control heartbeat intervals and short-term observation limits.',
+                heartbeatDefaultDelay: 'Default Delay',
+                heartbeatDefaultDelayDescription:
+                    'Fallback heartbeat delay when model output is invalid.',
+                heartbeatMinDelay: 'Min Delay',
+                heartbeatMinDelayDescription:
+                    'Lower bound for heartbeat interval in minutes.',
+                heartbeatMaxDelay: 'Max Delay',
+                heartbeatMaxDelayDescription:
+                    'Upper bound for heartbeat interval in minutes.',
+                heartbeatMaxObservations: 'Max Observations',
+                heartbeatMaxObservationsDescription:
+                    'Maximum heartbeat observations kept in short-term memory.',
                 triggers: {
                     activity: 'Activity',
                     private: 'Private',
@@ -503,6 +524,27 @@ const messages = {
                 warmGroupThreshold: '预热触发阈值',
                 warmGroupThresholdDescription:
                     '触发群组预热的活跃度阈值（0~1）。',
+                heartbeatEnabled: '启用心跳检查',
+                heartbeatEnabledDescription:
+                    '周期性执行心跳检查，主动分析群聊状态。',
+                heartbeatUseAgent: '使用工具 Agent',
+                heartbeatUseAgentDescription:
+                    '使用可调用工具的多轮分析模式进行心跳判断。',
+                heartbeatSettings: '心跳设置',
+                heartbeatSettingsDescription:
+                    '配置心跳间隔范围和短期观察记忆上限。',
+                heartbeatDefaultDelay: '默认间隔',
+                heartbeatDefaultDelayDescription:
+                    '当模型输出无效时使用的默认心跳间隔。',
+                heartbeatMinDelay: '最小间隔',
+                heartbeatMinDelayDescription:
+                    '心跳间隔的最小分钟数。',
+                heartbeatMaxDelay: '最大间隔',
+                heartbeatMaxDelayDescription:
+                    '心跳间隔的最大分钟数。',
+                heartbeatMaxObservations: '观察上限',
+                heartbeatMaxObservationsDescription:
+                    '短期记忆中最多保留的心跳观察条目数。',
                 triggers: {
                     activity: '活跃度',
                     private: '私聊',

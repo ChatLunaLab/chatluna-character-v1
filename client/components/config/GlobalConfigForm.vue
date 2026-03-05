@@ -319,6 +319,36 @@
 
                             />
                         </ConfigListItem>
+
+                        <ConfigListItem
+                            :label="t('character.config.heartbeatEnabled')"
+                            :description="t('character.config.heartbeatEnabledDescription')"
+                        >
+                            <el-switch
+                                v-model="modelValue.thinkingBrain.heartbeat.enabled"
+                            />
+                        </ConfigListItem>
+
+                        <template v-if="modelValue.thinkingBrain.heartbeat.enabled">
+                            <ConfigListItem
+                                :label="t('character.config.heartbeatUseAgent')"
+                                :description="t('character.config.heartbeatUseAgentDescription')"
+                            >
+                                <el-switch
+                                    v-model="modelValue.thinkingBrain.heartbeat.useAgent"
+                                />
+                            </ConfigListItem>
+                            <ConfigListItem
+                                :label="t('character.config.heartbeatSettings')"
+                                :description="t('character.config.heartbeatSettingsDescription')"
+                                align="start"
+                                vertical
+                            >
+                                <ScheduleEditor
+                                    :config="modelValue.thinkingBrain.heartbeat"
+                                />
+                            </ConfigListItem>
+                        </template>
                     </template>
                 </ConfigList>
             </template>
@@ -578,7 +608,7 @@
 </template>
 
 <script setup lang="ts">
-import { PropType, ref } from 'vue'
+import { PropType, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { MoreFilled } from '@element-plus/icons-vue'
 import type { CharacterConfig } from '@/types'
@@ -587,6 +617,7 @@ import ConfigList from '../ui/ConfigList.vue'
 import ConfigListItem from '../ui/ConfigListItem.vue'
 import GroupListSelector from '../ui/GroupListSelector.vue'
 import ModelSelectionDialog from '../ui/ModelSelectionDialog.vue'
+import ScheduleEditor from '../schedule-editor.vue'
 
 defineEmits(['update:modelValue'])
 
@@ -610,6 +641,30 @@ const props = defineProps({
 })
 
 const { t } = useI18n()
+
+const ensureThinkingConfig = (config: CharacterConfig & { preset?: string }) => {
+    if (!config.thinkingBrain) return
+
+    config.thinkingBrain.warmGroup ??= {
+        enabled: true,
+        threshold: 1800000
+    }
+
+    config.thinkingBrain.heartbeat ??= {
+        enabled: true,
+        useAgent: true,
+        defaultDelayMinutes: 5,
+        minDelayMinutes: 1,
+        maxDelayMinutes: 30,
+        maxObservations: 20
+    }
+}
+
+watch(
+    () => props.modelValue,
+    (value) => ensureThinkingConfig(value),
+    { immediate: true }
+)
 
 const modelDialogVisible = ref(false)
 const currentSelectingType = ref<'main' | 'analysis' | 'thinking'>('main')
